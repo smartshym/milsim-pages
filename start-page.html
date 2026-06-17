@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Точка 1</title>
+<style>
+  html,body{height:100%;margin:0}
+  body{
+    background:#000;color:#fff;
+    font-family:-apple-system,Segoe UI,Roboto,sans-serif;
+    display:flex;flex-direction:column;
+    align-items:center;justify-content:center;
+    gap:18px;padding:24px;text-align:center;
+  }
+  h1{font-size:22px;font-weight:600;margin:0}
+  .coords{font-size:20px;letter-spacing:.5px;word-break:break-word}
+  button{
+    margin-top:8px;padding:14px 22px;font-size:16px;
+    color:#000;background:#fff;border:none;border-radius:10px;
+    cursor:pointer;min-width:200px;
+  }
+  button:active{opacity:.7}
+  .ok{color:#4ade80;font-size:14px;height:18px}
+</style>
+</head>
+<body>
+  <h1>Точка 1.</h1>
+  <div>Координаты: <span id="coords" class="coords">43°47'48.2"N 77°02'50.2"E</span></div>
+  <button onclick="copyCoords()">Скопировать координаты</button>
+  <div id="msg" class="ok"></div>
+
+<script>
+function copyCoords(){
+  var text=document.getElementById('coords').textContent.trim();
+  var done=function(){
+    document.getElementById('msg').textContent='Скопировано';
+    setTimeout(function(){document.getElementById('msg').textContent='';},1500);
+  };
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(done).catch(fallback);
+  }else{fallback();}
+  function fallback(){
+    var t=document.createElement('textarea');
+    t.value=text;document.body.appendChild(t);t.select();
+    try{document.execCommand('copy');done();}catch(e){}
+    document.body.removeChild(t);
+  }
+}
+</script>
+</body>
+</html>
