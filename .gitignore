@@ -4,6 +4,9 @@
 _src/
 CONTEXT.md
 
+# Бэкап зашифрованной версии админки (для отката) — не публикуем.
+admin/index.locked.html.bak
+
 # Прочее
 .DS_Store
 Thumbs.db
