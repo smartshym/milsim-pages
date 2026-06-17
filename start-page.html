@@ -1,52 +1,173 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#050403">
 <title>Точка 1</title>
 <style>
-  html,body{height:100%;margin:0}
+  :root{
+    /* warm near-black + amber phosphor: dim by design for night ops */
+    --bg:        #050403;
+    --panel:     #0b0907;
+    --line:      rgba(214,160,82,.16);
+    --line-soft: rgba(214,160,82,.08);
+    --ink:       #b89a63;   /* body */
+    --ink-dim:   #6f5d3c;   /* captions */
+    --amber:     #e3ad45;   /* headings */
+    --amber-hot: #ffc24d;   /* single focal bright element: the coordinate */
+    --rust:      #8a3b2c;   /* classification tick */
+    --mono: ui-monospace,"SF Mono","Cascadia Mono","Roboto Mono",Menlo,Consolas,monospace;
+  }
+
+  *{box-sizing:border-box;margin:0;padding:0}
+
+  html,body{height:100%}
   body{
-    background:#000;color:#fff;
-    font-family:-apple-system,Segoe UI,Roboto,sans-serif;
-    display:flex;flex-direction:column;
-    align-items:center;justify-content:center;
-    gap:18px;padding:24px;text-align:center;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:var(--mono);
+    -webkit-font-smoothing:antialiased;
+    /* faint map grid — kept very low luminance */
+    background-image:
+      linear-gradient(var(--line-soft) 1px,transparent 1px),
+      linear-gradient(90deg,var(--line-soft) 1px,transparent 1px);
+    background-size:38px 38px;
+    background-position:center;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    min-height:100dvh;
+    padding:24px;
   }
-  h1{font-size:22px;font-weight:600;margin:0}
-  .coords{font-size:20px;letter-spacing:.5px;word-break:break-word}
-  button{
-    margin-top:8px;padding:14px 22px;font-size:16px;
-    color:#000;background:#fff;border:none;border-radius:10px;
-    cursor:pointer;min-width:200px;
+
+  .card{
+    position:relative;
+    width:100%;
+    max-width:420px;
+    background:linear-gradient(180deg,var(--panel),#070605);
+    border:1px solid var(--line);
+    padding:34px 26px 26px;
+    animation:rise .5s ease both;
   }
-  button:active{opacity:.7}
-  .ok{color:#4ade80;font-size:14px;height:18px}
+  @keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+  /* signature: tactical corner brackets */
+  .card::before,.card::after,
+  .bk::before,.bk::after{
+    content:"";position:absolute;width:16px;height:16px;
+    border:1.5px solid var(--amber);pointer-events:none;
+  }
+  .card::before{top:-1px;left:-1px;border-right:0;border-bottom:0}
+  .card::after{top:-1px;right:-1px;border-left:0;border-bottom:0}
+  .bk::before{bottom:-1px;left:-1px;border-right:0;border-top:0}
+  .bk::after{bottom:-1px;right:-1px;border-left:0;border-top:0}
+
+  .eyebrow{
+    display:flex;align-items:center;gap:9px;
+    font-size:11px;letter-spacing:.28em;text-transform:uppercase;
+    color:var(--ink-dim);margin-bottom:26px;
+  }
+  .eyebrow .tick{width:7px;height:7px;background:var(--rust);
+    box-shadow:0 0 6px var(--rust)}
+  .eyebrow .rule{flex:1;height:1px;background:var(--line)}
+
+  .point{display:flex;align-items:baseline;gap:14px;margin-bottom:30px}
+  .point .lbl{font-size:13px;letter-spacing:.32em;text-transform:uppercase;color:var(--ink-dim)}
+  .point .num{
+    font-size:72px;line-height:.8;font-weight:600;
+    color:var(--amber);font-variant-numeric:tabular-nums;
+  }
+
+  .readout{border:1px solid var(--line);background:rgba(0,0,0,.35);padding:16px 16px 18px}
+  .readout .head{
+    display:flex;align-items:center;gap:9px;
+    font-size:11px;letter-spacing:.24em;text-transform:uppercase;
+    color:var(--ink-dim);margin-bottom:12px;
+  }
+  .lock{width:8px;height:8px;border-radius:50%;background:var(--amber-hot);
+    box-shadow:0 0 8px var(--amber-hot)}
+  @media (prefers-reduced-motion:no-preference){
+    .lock{animation:blink 2.4s steps(1) infinite}
+    @keyframes blink{0%,72%{opacity:1}73%,100%{opacity:.25}}
+  }
+  .coords{
+    font-size:21px;line-height:1.45;font-weight:600;
+    color:var(--amber-hot);word-break:break-word;
+    text-shadow:0 0 14px rgba(255,194,77,.18);
+  }
+
+  .actions{display:flex;flex-direction:column;gap:10px;margin-top:22px}
+  .btn{
+    appearance:none;cursor:pointer;text-decoration:none;
+    font-family:var(--mono);font-size:13px;letter-spacing:.14em;text-transform:uppercase;
+    padding:15px 16px;text-align:center;
+    border:1px solid var(--line);background:transparent;color:var(--ink);
+    transition:border-color .15s,color .15s,background .15s;
+  }
+  .btn:hover{border-color:var(--amber);color:var(--amber)}
+  .btn:focus-visible{outline:2px solid var(--amber-hot);outline-offset:2px}
+  .btn-primary{border-color:rgba(227,173,69,.45);color:var(--amber)}
+  .btn-primary:hover{background:rgba(227,173,69,.07)}
+  .btn-primary.ok{border-color:var(--amber-hot);color:var(--amber-hot);background:rgba(255,194,77,.08)}
+
+  .footer{
+    display:flex;align-items:center;gap:9px;margin-top:24px;
+    font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--ink-dim);
+  }
+  .footer .rule{flex:1;height:1px;background:var(--line)}
 </style>
 </head>
 <body>
-  <h1>Точка 1.</h1>
-  <div>Координаты: <span id="coords" class="coords">43°47'48.2"N 77°02'50.2"E</span></div>
-  <button onclick="copyCoords()">Скопировать координаты</button>
-  <div id="msg" class="ok"></div>
+  <main class="card">
+    <span class="bk"></span>
+
+    <div class="eyebrow"><span class="tick"></span>Разведточка · Night ops<span class="rule"></span></div>
+
+    <div class="point">
+      <span class="lbl">Точка</span>
+      <span class="num">1</span>
+    </div>
+
+    <div class="readout">
+      <div class="head"><span class="lock"></span>Координаты</div>
+      <div class="coords" id="coords">43°47'48.2"N 77°02'50.2"E</div>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" id="copyBtn" type="button">Скопировать координаты</button>
+      <a class="btn" id="mapBtn" href="https://www.google.com/maps?q=43.796722,77.047278" target="_blank" rel="noopener">Открыть в картах</a>
+    </div>
+
+    <div class="footer">Приглуши экран<span class="rule"></span>светодисциплина</div>
+  </main>
 
 <script>
-function copyCoords(){
-  var text=document.getElementById('coords').textContent.trim();
-  var done=function(){
-    document.getElementById('msg').textContent='Скопировано';
-    setTimeout(function(){document.getElementById('msg').textContent='';},1500);
-  };
-  if(navigator.clipboard&&navigator.clipboard.writeText){
-    navigator.clipboard.writeText(text).then(done).catch(fallback);
-  }else{fallback();}
-  function fallback(){
-    var t=document.createElement('textarea');
-    t.value=text;document.body.appendChild(t);t.select();
-    try{document.execCommand('copy');done();}catch(e){}
-    document.body.removeChild(t);
-  }
-}
+  (function(){
+    var btn = document.getElementById('copyBtn');
+    var coords = document.getElementById('coords').textContent.trim();
+    var label = btn.textContent;
+    var t;
+
+    function done(){
+      btn.classList.add('ok');
+      btn.textContent = 'Скопировано ✓';
+      clearTimeout(t);
+      t = setTimeout(function(){ btn.classList.remove('ok'); btn.textContent = label; }, 1600);
+    }
+    function fallback(){
+      var ta = document.createElement('textarea');
+      ta.value = coords; ta.style.position='fixed'; ta.style.opacity='0';
+      document.body.appendChild(ta); ta.focus(); ta.select();
+      try{ document.execCommand('copy'); done(); }catch(e){}
+      document.body.removeChild(ta);
+    }
+    btn.addEventListener('click', function(){
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(coords).then(done, fallback);
+      } else { fallback(); }
+    });
+  })();
 </script>
 </body>
 </html>
