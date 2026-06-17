@@ -53,142 +53,36 @@
   .mini.ok{border-color:var(--green);color:var(--green)}
   .mini.wide{width:100%;margin-top:10px;padding:9px}
   .foot{margin-top:24px;font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-dim)}
+
+  /* --- замок (форма пароля) --- */
+  .gate{max-width:380px;margin:14vh auto 0;background:linear-gradient(180deg,var(--panel),#070605);border:1px solid var(--line);padding:30px 26px}
+  .gate h1{margin-bottom:6px}
+  .gate .sub{margin-bottom:22px}
+  .gate input{width:100%;font-family:var(--mono);font-size:16px;letter-spacing:.05em;color:var(--amber-hot);
+    background:rgba(0,0,0,.35);border:1px solid var(--line);padding:13px 12px;outline:none;transition:border-color .15s}
+  .gate input:focus{border-color:var(--amber-hot)}
+  .gate.err input{border-color:var(--rust);color:#c66}
+  .gate .btn{appearance:none;cursor:pointer;width:100%;margin-top:10px;font-family:var(--mono);font-size:13px;
+    letter-spacing:.14em;text-transform:uppercase;padding:14px;border:1px solid rgba(227,173,69,.45);background:transparent;color:var(--amber)}
+  .gate .btn:hover{background:rgba(227,173,69,.07)}
+  .gate .msg{min-height:15px;margin-top:12px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--rust)}
+  .hidden{display:none}
 </style>
 </head>
 <body>
-  <div class="wrap">
+  <!-- ЗАМОК: содержимое админки зашифровано, открывается только верным паролем -->
+  <form class="gate" id="gate" autocomplete="off">
+    <h1>Админ-панель · Песчаный факел</h1>
+    <div class="sub">доступ только для гейм-мастера</div>
+    <input type="password" id="pw" placeholder="Пароль" aria-label="Пароль" autofocus>
+    <button class="btn" type="submit">Войти</button>
+    <div class="msg" id="msg"></div>
+  </form>
+
+  <div class="wrap hidden" id="panel">
     <h1>Админ-панель · Песчаный факел</h1>
     <div class="sub">только для гейм-мастера · не раздавать игрокам</div>
-
-    <div class="grid">
-  <section class="side">
-    <div class="side-head"><span class="tick"></span>Коалиция <span class="px">c-</span></div>
-
-    <div class="codebox">
-      <div class="code-lbl">Код доступа</div>
-      <div class="code-val" id="code-coalition">SH1HBK4RUNJ3B3LS4F4R</div>
-      <div class="code-seg">SH1HB · K4RUN · J3B3L · S4F4R</div>
-      <button class="mini wide" data-copy="SH1HBK4RUNJ3B3LS4F4R">копировать код</button>
-    </div>
-
-    <div class="rows">
-      <div class="row">
-        <span class="rn">01</span>
-        <span class="badge decoy">ложная</span>
-        <span class="frag none">—</span>
-        <a class="lnk" href="https://smartshym.github.io/milsim-pages/coalition/c-qxtlbu-01.html" target="_blank" rel="noopener">coalition/c-qxtlbu-01.html</a>
-        <button class="mini" data-copy="https://smartshym.github.io/milsim-pages/coalition/c-qxtlbu-01.html">копировать URL</button>
-      </div>
-      <div class="row">
-        <span class="rn">02</span>
-        <span class="badge real">реальная</span>
-        <span class="frag">SH1HB</span>
-        <a class="lnk" href="https://smartshym.github.io/milsim-pages/coalition/c-rxases-02.html" target="_blank" rel="noopener">coalition/c-rxases-02.html</a>
-        <button class="mini" data-copy="https://smartshym.github.io/milsim-pages/coalition/c-rxases-02.html">копировать URL</button>
-      </div>
-      <div class="row">
-        <span class="rn">03</span>
-        <span class="badge real">реальная</span>
-        <span class="frag">S4F4R</span>
-        <a class="lnk" href="https://smartshym.github.io/milsim-pages/coalition/c-pmvaxm-03.html" target="_blank" rel="noopener">coalition/c-pmvaxm-03.html</a>
-        <button class="mini" data-copy="https://smartshym.github.io/milsim-pages/coalition/c-pmvaxm-03.html">копировать URL</button>
-      </div>
-      <div class="row">
-        <span class="rn">04</span>
-        <span class="badge decoy">ложная</span>
-        <span class="frag none">—</span>
-        <a class="lnk" href="https://smartshym.github.io/milsim-pages/coalition/c-jlkxyr-04.html" target="_blank" rel="noopener">coalition/c-jlkxyr-04.html</a>
-        <button class="mini" data-copy="https://smartshym.github.io/milsim-pages/coalition/c-jlkxyr-04.html">копировать URL</button>
-      </div>
-      <div class="row">
-        <span class="rn">05</span>
-        <span class="badge real">реальная</span>
-        <span class="frag">K4RUN</span>
-        <a class="lnk" href="https://smartshym.github.io/milsim-pages/coalition/c-jufkdt-05.html" target="_blank" rel="noopener">coalition/c-jufkdt-05.html</a>
-        <button class="mini" data-copy="https://smartshym.github.io/milsim-pages/coalition/c-jufkdt-05.html">копировать URL</button>
-      </div>
-      <div class="row">
-        <span class="rn">06</span>
-        <span class="badge real">реальная</span>
-        <span class="frag">J3B3L</span>
-        <a class="lnk" href="https://smartshym.github.io/milsim-pages/coalition/c-vmipxc-06.html" target="_blank" rel="noopener">coalition/c-vmipxc-06.html</a>
-        <button class="mini" data-copy="https://smartshym.github.io/milsim-pages/coalition/c-vmipxc-06.html">копировать URL</button>
-      </div>
-      <div class="row term">
-        <span class="rn">07</span>
-        <span class="badge term">терминал</span>
-        <span class="frag none">—</span>
-        <a class="lnk" href="https://smartshym.github.io/milsim-pages/coalition/c-isailq-07.html" target="_blank" rel="noopener">coalition/c-isailq-07.html</a>
-        <button class="mini" data-copy="https://smartshym.github.io/milsim-pages/coalition/c-isailq-07.html">копировать URL</button>
-      </div>
-    </div>
-  </section>
-
-  <section class="side">
-    <div class="side-head"><span class="tick"></span>Ансар аль-Карун <span class="px">p-</span></div>
-
-    <div class="codebox">
-      <div class="code-lbl">Код доступа</div>
-      <div class="code-val" id="code-ansar">ANS4RDR4G0N1GHTHMM3R</div>
-      <div class="code-seg">ANS4R · DR4G0 · N1GHT · HMM3R</div>
-      <button class="mini wide" data-copy="ANS4RDR4G0N1GHTHMM3R">копировать код</button>
-    </div>
-
-    <div class="rows">
-      <div class="row">
-        <span class="rn">01</span>
-        <span class="badge real">реальная</span>
-        <span class="frag">DR4G0</span>
-        <a class="lnk" href="https://smartshym.github.io/milsim-pages/ansar/p-qobsxm-01.html" target="_blank" rel="noopener">ansar/p-qobsxm-01.html</a>
-        <button class="mini" data-copy="https://smartshym.github.io/milsim-pages/ansar/p-qobsxm-01.html">копировать URL</button>
-      </div>
-      <div class="row">
-        <span class="rn">02</span>
-        <span class="badge decoy">ложная</span>
-        <span class="frag none">—</span>
-        <a class="lnk" href="https://smartshym.github.io/milsim-pages/ansar/p-jhoiyk-02.html" target="_blank" rel="noopener">ansar/p-jhoiyk-02.html</a>
-        <button class="mini" data-copy="https://smartshym.github.io/milsim-pages/ansar/p-jhoiyk-02.html">копировать URL</button>
-      </div>
-      <div class="row">
-        <span class="rn">03</span>
-        <span class="badge real">реальная</span>
-        <span class="frag">HMM3R</span>
-        <a class="lnk" href="https://smartshym.github.io/milsim-pages/ansar/p-bsginh-03.html" target="_blank" rel="noopener">ansar/p-bsginh-03.html</a>
-        <button class="mini" data-copy="https://smartshym.github.io/milsim-pages/ansar/p-bsginh-03.html">копировать URL</button>
-      </div>
-      <div class="row">
-        <span class="rn">04</span>
-        <span class="badge real">реальная</span>
-        <span class="frag">ANS4R</span>
-        <a class="lnk" href="https://smartshym.github.io/milsim-pages/ansar/p-nxrabv-04.html" target="_blank" rel="noopener">ansar/p-nxrabv-04.html</a>
-        <button class="mini" data-copy="https://smartshym.github.io/milsim-pages/ansar/p-nxrabv-04.html">копировать URL</button>
-      </div>
-      <div class="row">
-        <span class="rn">05</span>
-        <span class="badge decoy">ложная</span>
-        <span class="frag none">—</span>
-        <a class="lnk" href="https://smartshym.github.io/milsim-pages/ansar/p-lsubvf-05.html" target="_blank" rel="noopener">ansar/p-lsubvf-05.html</a>
-        <button class="mini" data-copy="https://smartshym.github.io/milsim-pages/ansar/p-lsubvf-05.html">копировать URL</button>
-      </div>
-      <div class="row">
-        <span class="rn">06</span>
-        <span class="badge real">реальная</span>
-        <span class="frag">N1GHT</span>
-        <a class="lnk" href="https://smartshym.github.io/milsim-pages/ansar/p-ulydur-06.html" target="_blank" rel="noopener">ansar/p-ulydur-06.html</a>
-        <button class="mini" data-copy="https://smartshym.github.io/milsim-pages/ansar/p-ulydur-06.html">копировать URL</button>
-      </div>
-      <div class="row term">
-        <span class="rn">07</span>
-        <span class="badge term">терминал</span>
-        <span class="frag none">—</span>
-        <a class="lnk" href="https://smartshym.github.io/milsim-pages/ansar/p-ccpdnu-07.html" target="_blank" rel="noopener">ansar/p-ccpdnu-07.html</a>
-        <button class="mini" data-copy="https://smartshym.github.io/milsim-pages/ansar/p-ccpdnu-07.html">копировать URL</button>
-      </div>
-    </div>
-  </section>
-    </div>
-
-    <div class="foot">база: https://smartshym.github.io/milsim-pages/</div>
+    <div id="content"></div>
   </div>
 
 <script>
@@ -215,9 +109,38 @@
     });
   }
 
-  document.querySelectorAll('[data-copy]').forEach(function(b){
-    b.setAttribute('data-ok','скопировано ✓');
-    bindCopy(b, b.getAttribute('data-copy'));
+  var BLOB = {"iter":200000,"salt":"j0IALUVf2povv+n+wrI/fw==","iv":"abiaK/Dl7znMRdCN","data":"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"};
+  var gate = document.getElementById('gate'), pw = document.getElementById('pw'), msg = document.getElementById('msg');
+
+  function b64(s){ return Uint8Array.from(atob(s), function(c){ return c.charCodeAt(0); }); }
+
+  async function unlock(password){
+    var enc = new TextEncoder();
+    var base = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']);
+    var key = await crypto.subtle.deriveKey(
+      { name:'PBKDF2', salt:b64(BLOB.salt), iterations:BLOB.iter, hash:'SHA-256' },
+      base, { name:'AES-GCM', length:256 }, false, ['decrypt']);
+    var plain = await crypto.subtle.decrypt({ name:'AES-GCM', iv:b64(BLOB.iv) }, key, b64(BLOB.data));
+    return new TextDecoder().decode(plain);
+  }
+
+  function reveal(html){
+    document.getElementById('content').innerHTML = html;
+    gate.classList.add('hidden');
+    document.getElementById('panel').classList.remove('hidden');
+    document.querySelectorAll('[data-copy]').forEach(function(b){
+      b.setAttribute('data-ok','скопировано ✓');
+      bindCopy(b, b.getAttribute('data-copy'));
+    });
+  }
+
+  gate.addEventListener('submit', function(e){
+    e.preventDefault();
+    if(!(window.crypto && crypto.subtle)){ msg.textContent = 'Нужен https (или localhost)'; return; }
+    msg.textContent = '…';
+    unlock(pw.value).then(reveal).catch(function(){
+      gate.classList.add('err'); msg.textContent = 'Неверный пароль'; pw.select();
+    });
   });
 </script>
 </body>
