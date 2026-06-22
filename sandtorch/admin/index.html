@@ -23,7 +23,8 @@
   .wrap{max-width:960px;margin:0 auto}
   h1{font-size:15px;letter-spacing:.26em;text-transform:uppercase;color:var(--amber);font-weight:600;margin-bottom:6px}
   .sub{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--rust);margin-bottom:26px}
-  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:18px}
+  .grid{display:grid;grid-template-columns:1fr;gap:18px}
+  @media(min-width:760px){ .grid{grid-template-columns:1fr 1fr} }
 
   .side{position:relative;background:linear-gradient(180deg,var(--panel),#070605);border:1px solid var(--line);padding:20px}
   .side-head{display:flex;align-items:center;gap:9px;font-size:13px;letter-spacing:.2em;text-transform:uppercase;color:var(--amber);margin-bottom:16px}
@@ -52,6 +53,17 @@
   .mini.ok{border-color:var(--green);color:var(--green)}
   .mini.wide{width:100%;margin-top:10px;padding:9px}
   .foot{margin-top:24px;font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-dim)}
+
+  /* --- мобильная адаптация: на узком экране кнопки строки переносятся на вторую линию --- */
+  @media(max-width:520px){
+    .wrap{max-width:100%}
+    .row{flex-wrap:wrap;row-gap:8px}
+    .frag{flex:1 1 auto}                  /* фрагмент растягивает 1-ю строку → кнопки уезжают вниз */
+    .row button:first-of-type{margin-left:0}
+    .row button{flex:1 1 0}               /* две кнопки делят ширину поровну */
+    .side{padding:16px}
+    h1{letter-spacing:.16em}
+  }
 
   /* --- замок (форма пароля) --- */
   .gate{max-width:380px;margin:14vh auto 0;background:linear-gradient(180deg,var(--panel),#070605);border:1px solid var(--line);padding:30px 26px}
