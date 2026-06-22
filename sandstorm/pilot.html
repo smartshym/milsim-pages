@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#050403">
+<title>Пилот · Песчаная буря</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+  :root{
+    --bg:#050403; --panel:#0b0907cc;
+    --line:rgba(214,160,82,.22); --ink:#b89a63; --ink-dim:#6f5d3c;
+    --amber:#e3ad45; --amber-hot:#ffc24d; --green:#57c98a; --rust:#8a3b2c;
+    --mono:ui-monospace,"SF Mono","Cascadia Mono","Roboto Mono",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{background:var(--bg);color:var(--ink);font-family:var(--mono);overflow:hidden}
+  #map{position:absolute;inset:0;background:var(--bg)}
+  .leaflet-container{background:var(--bg)}
+
+  /* статус-панель */
+  #panel{
+    position:absolute;left:10px;right:10px;bottom:10px;z-index:1000;
+    background:var(--panel);border:1px solid var(--line);padding:12px 14px;
+    backdrop-filter:blur(4px);font-size:12px;line-height:1.5;
+    display:grid;grid-template-columns:repeat(2,1fr);gap:4px 16px;
+  }
+  #panel .k{color:var(--ink-dim);text-transform:uppercase;letter-spacing:.12em;font-size:10px}
+  #panel .v{color:var(--amber-hot);font-weight:600}
+  #panel .dist .v{color:var(--green);font-size:15px}
+  #panel .full{grid-column:1/-1}
+  #msg{color:var(--rust);min-height:14px}
+  .hint{position:absolute;top:10px;left:10px;right:10px;z-index:1000;
+    background:var(--panel);border:1px solid var(--line);padding:8px 12px;
+    font-size:11px;color:var(--ink-dim);backdrop-filter:blur(4px)}
+
+  /* маркеры */
+  .me{width:16px;height:16px;border-radius:50%;background:var(--amber-hot);
+    border:2px solid #000;box-shadow:0 0 10px var(--amber-hot)}
+  .tgt{width:14px;height:14px;background:var(--green);border:2px solid #000;
+    box-shadow:0 0 10px var(--green);transform:rotate(45deg)}
+</style>
+</head>
+<body>
+  <div id="map"></div>
+  <div class="hint">Пилот: твоя позиция на отрисованной карте. Тапни по карте — поставить тестовую цель, увижу дистанцию до неё.</div>
+  <div id="panel">
+    <div><div class="k">Широта</div><div class="v" id="lat">—</div></div>
+    <div><div class="k">Долгота</div><div class="v" id="lng">—</div></div>
+    <div><div class="k">Точность</div><div class="v" id="acc">—</div></div>
+    <div><div class="k">На карте</div><div class="v" id="inside">—</div></div>
+    <div class="dist"><div class="k">До цели</div><div class="v" id="dist">—</div></div>
+    <div><div class="k">Пиксель X/Y</div><div class="v" id="px">—</div></div>
+    <div class="full"><div class="k">Обновлено</div><div class="v" id="time">ожидание GPS…</div></div>
+    <div class="full"><div id="msg"></div></div>
+  </div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+  // --- георефференс из KMZ (GroundOverlay, без поворота) ---
+  var GEO = { north:43.81687355441687, south:43.78795236649337,
+              east:77.07101927537143,  west:77.04279873867411,
+              imgW:2445, imgH:3455 };
+  var bounds = [[GEO.south, GEO.west],[GEO.north, GEO.east]];
+
+  var map = L.map('map', { zoomSnap:0.25, attributionControl:false, maxZoom:20 });
+  L.imageOverlay('Boloto_v1.05.jpg', bounds).addTo(map);
+  map.fitBounds(bounds);
+  map.setMaxBounds(L.latLngBounds(bounds).pad(0.3));
+
+  // тестовая цель — по умолчанию центр карты, двигается тапом/перетаскиванием
+  var center = L.latLngBounds(bounds).getCenter();
+  var tgtIcon = L.divIcon({className:'', html:'<div class="tgt"></div>', iconSize:[14,14], iconAnchor:[7,7]});
+  var target = L.marker(center, {icon:tgtIcon, draggable:true}).addTo(map);
+  map.on('click', function(e){ target.setLatLng(e.latlng); update(); });
+  target.on('drag', update);
+
+  // маркер игрока + круг точности
+  var meIcon = L.divIcon({className:'', html:'<div class="me"></div>', iconSize:[16,16], iconAnchor:[8,8]});
+  var me=null, acc=null, last=null;
+
+  function px(latlng){
+    return {
+      x: Math.round((latlng.lng - GEO.west)/(GEO.east - GEO.west)*GEO.imgW),
+      y: Math.round((GEO.north - latlng.lat)/(GEO.north - GEO.south)*GEO.imgH)
+    };
+  }
+  function set(id,t){ document.getElementById(id).textContent = t; }
+
+  function update(){
+    if(!last) return;
+    var d = map.distance(last, target.getLatLng());
+    set('dist', d>=1000 ? (d/1000).toFixed(2)+' км' : Math.round(d)+' м');
+    var p = px(last);
+    set('px', p.x+' / '+p.y);
+    set('inside', L.latLngBounds(bounds).contains(last) ? 'да' : 'вне карты');
+  }
+
+  function onPos(pos){
+    var c = pos.coords;
+    last = L.latLng(c.latitude, c.longitude);
+    if(!me){ me = L.marker(last,{icon:meIcon}).addTo(map); acc = L.circle(last,{radius:c.accuracy,color:'#ffc24d',weight:1,fillOpacity:.06}).addTo(map); map.setView(last, 16); }
+    else { me.setLatLng(last); acc.setLatLng(last).setRadius(c.accuracy); }
+    set('lat', c.latitude.toFixed(6));
+    set('lng', c.longitude.toFixed(6));
+    set('acc', Math.round(c.accuracy)+' м');
+    set('time', new Date(pos.timestamp).toLocaleTimeString('ru-RU'));
+    set('msg','');
+    update();
+  }
+  function onErr(e){ set('msg','GPS: '+e.message+' (нужен https или localhost + разрешение)'); }
+
+  if(!navigator.geolocation){ set('msg','Геолокация не поддерживается'); }
+  else navigator.geolocation.watchPosition(onPos, onErr, { enableHighAccuracy:true, maximumAge:1000, timeout:15000 });
+</script>
+</body>
+</html>
