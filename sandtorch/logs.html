@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#050403">
+<meta name="robots" content="noindex,nofollow">
+<title>Песчаная буря · логи</title>
+<style>
+  :root{ --bg:#050403; --panel:#0b0907; --line:rgba(214,160,82,.18);
+    --ink:#b89a63; --ink-dim:#6f5d3c; --amber:#e3ad45; --amber-hot:#ffc24d;
+    --blue:#4d9bff; --red:#ff4d4d; --green:#57c98a;
+    --mono:ui-monospace,"SF Mono","Cascadia Mono",Menlo,Consolas,monospace; }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:var(--mono);padding:24px 16px 48px;min-height:100vh}
+  .wrap{max-width:880px;margin:0 auto}
+  h1{font-size:15px;letter-spacing:.22em;text-transform:uppercase;color:var(--amber);margin-bottom:16px}
+  .tabs{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+  .tab{font-family:var(--mono);font-size:12px;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;
+    padding:9px 12px;background:transparent;border:1px solid var(--line);color:var(--ink-dim)}
+  .tab.on{border-color:var(--amber-hot);color:var(--amber-hot)}
+  .pane.hidden{display:none}
+  .cnt{font-size:11px;color:var(--ink-dim);margin-bottom:8px;letter-spacing:.08em}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line)}
+  th{color:var(--ink-dim);text-transform:uppercase;letter-spacing:.1em;font-size:10px;font-weight:600}
+  td.t{color:var(--amber-hot);white-space:nowrap}
+  .badge{font-size:10px;padding:1px 6px;border:1px solid currentColor}
+  .c-coalition{color:var(--blue)} .c-insurgents{color:var(--red)}
+  .dev{color:var(--ink-dim);word-break:break-all}
+  .empty{color:var(--ink-dim);padding:14px 4px}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Логи · Песчаная буря</h1>
+    <div class="tabs">
+      <button class="tab on" data-t="cap">Захваты точек</button>
+      <button class="tab" data-t="movC">Перемещения · Коалиция</button>
+      <button class="tab" data-t="movI">Перемещения · Повстанцы</button>
+    </div>
+    <div id="cap" class="pane"></div>
+    <div id="movC" class="pane hidden"></div>
+    <div id="movI" class="pane hidden"></div>
+  </div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script>
+  var firebaseConfig = {
+    apiKey:"AIzaSyCPrxWyVeUpNxtul8nOUNKRjf9Uo6wH-PA", authDomain:"milsim-pages.firebaseapp.com",
+    databaseURL:"https://milsim-pages-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId:"milsim-pages", storageBucket:"milsim-pages.firebasestorage.app",
+    messagingSenderId:"931830776663", appId:"1:931830776663:web:78976b5c11ce30dfc73412" };
+  firebase.initializeApp(firebaseConfig);
+  var db=firebase.database();
+
+  var LABEL={coalition:'Коалиция',insurgents:'Повстанцы'};
+  function fmt(t){ try{ return new Date(t).toLocaleString('ru-RU'); }catch(e){ return t; } }
+  function el(id){ return document.getElementById(id); }
+
+  // табы
+  document.querySelectorAll('.tab').forEach(function(b){
+    b.onclick=function(){
+      document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('on');}); b.classList.add('on');
+      ['cap','movC','movI'].forEach(function(p){ el(p).classList.add('hidden'); });
+      el(b.dataset.t).classList.remove('hidden');
+    };
+  });
+
+  // ----- захваты точек -----
+  var caps={coalition:{},insurgents:{}};
+  ['coalition','insurgents'].forEach(function(s){
+    db.ref('visits/'+s).on('value',function(snap){ caps[s]=snap.val()||{}; renderCaps(); });
+  });
+  function renderCaps(){
+    var rows=[];
+    ['coalition','insurgents'].forEach(function(s){
+      var a=caps[s]||{}; Object.keys(a).forEach(function(k){ var r=a[k]||{}; rows.push({side:s,point:r.point||k,device:r.device||'—',time:r.time||0}); });
+    });
+    rows.sort(function(a,b){ return b.time-a.time; });
+    var html='<div class="cnt">всего: '+rows.length+'</div>';
+    if(!rows.length){ el('cap').innerHTML=html+'<div class="empty">пока нет захватов</div>'; return; }
+    html+='<table><tr><th>Время</th><th>Сторона</th><th>Точка</th><th>Устройство</th></tr>';
+    rows.forEach(function(r){ html+='<tr><td class="t">'+fmt(r.time)+'</td><td><span class="badge c-'+r.side+'">'+LABEL[r.side]+'</span></td><td>'+r.point+'</td><td class="dev">'+r.device+'</td></tr>'; });
+    el('cap').innerHTML=html+'</table>';
+  }
+
+  // ----- перемещения (из tracks) -----
+  db.ref('tracks').on('value',function(snap){
+    var tr=snap.val()||{}, bySide={coalition:[],insurgents:[]};
+    Object.keys(tr).forEach(function(dev){
+      var pts=tr[dev]||{};
+      Object.keys(pts).forEach(function(k){ var e=pts[k]; if(!e||e.lat==null) return; var s=e.side; if(!bySide[s]) return; bySide[s].push({device:dev,lat:e.lat,lng:e.lng,time:e.time||0}); });
+    });
+    renderMov('movC', bySide.coalition);
+    renderMov('movI', bySide.insurgents);
+  });
+  function renderMov(id, arr){
+    arr.sort(function(a,b){ return b.time-a.time; });
+    var total=arr.length, shown=arr.slice(0,400);
+    var html='<div class="cnt">всего точек: '+total+(total>400?' (показаны последние 400)':'')+'</div>';
+    if(!total){ el(id).innerHTML=html+'<div class="empty">пока нет перемещений</div>'; return; }
+    html+='<table><tr><th>Время</th><th>Устройство</th><th>Координаты</th></tr>';
+    shown.forEach(function(r){ html+='<tr><td class="t">'+fmt(r.time)+'</td><td class="dev">'+r.device+'</td><td>'+r.lat.toFixed(6)+', '+r.lng.toFixed(6)+'</td></tr>'; });
+    el(id).innerHTML=html+'</table>';
+  }
+</script>
+</body>
+</html>

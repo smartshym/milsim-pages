@@ -78,6 +78,10 @@
   .gate .btn:hover{background:rgba(227,173,69,.07)}
   .gate .msg{min-height:15px;margin-top:12px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--rust)}
   .hidden{display:none}
+  .tools{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:22px}
+  .tools a{font-size:12px;letter-spacing:.06em;text-transform:uppercase;text-decoration:none;color:var(--ink);border:1px solid var(--line);padding:10px 12px;transition:.15s}
+  .tools a:hover{border-color:var(--amber);color:var(--amber)}
+  .tools a.b{color:#4d9bff} .tools a.r{color:#ff4d4d}
 </style>
 </head>
 <body>
@@ -85,6 +89,12 @@
   <div class="wrap" id="panel">
     <h1>Админ-панель · Песчаный факел</h1>
     <div class="sub">только для гейм-мастера · не раздавать игрокам</div>
+    <nav class="tools">
+      <a href="../blue-map.html" target="_blank" class="b">Синяя карта · Коалиция</a>
+      <a href="../red-map.html" target="_blank" class="r">Красная карта · Повстанцы</a>
+      <a href="../admin-map.html" target="_blank">Админ-карта</a>
+      <a href="../logs.html" target="_blank">Логи</a>
+    </nav>
     <div id="content">
       <div class="grid">
         <section class="side">

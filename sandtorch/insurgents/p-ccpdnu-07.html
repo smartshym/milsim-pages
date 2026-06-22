@@ -231,5 +231,21 @@
     boxes[0].focus();
   })();
 </script>
+<!-- sb-visit -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script>
+(function(){ try{
+  var p=location.pathname;
+  var side=p.indexOf('/coalition/')>=0?'coalition':(p.indexOf('/insurgents/')>=0?'insurgents':null);
+  var m=p.match(/-(\d{2})\.html$/); if(!side||!m) return;
+  var point=parseInt(m[1],10);
+  var dev=localStorage.getItem('sb_device');
+  if(!dev){ dev=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():('d-'+Date.now().toString(36)+Math.random().toString(36).slice(2,8)); localStorage.setItem('sb_device',dev); }
+  var cfg={apiKey:"AIzaSyCPrxWyVeUpNxtul8nOUNKRjf9Uo6wH-PA",authDomain:"milsim-pages.firebaseapp.com",databaseURL:"https://milsim-pages-default-rtdb.europe-west1.firebasedatabase.app",projectId:"milsim-pages",storageBucket:"milsim-pages.firebasestorage.app",messagingSenderId:"931830776663",appId:"1:931830776663:web:78976b5c11ce30dfc73412"};
+  if(!firebase.apps.length) firebase.initializeApp(cfg);
+  firebase.database().ref('visits/'+side+'/'+point).transaction(function(cur){ return cur?undefined:{side:side,point:point,device:dev,time:Date.now()}; });
+}catch(e){} })();
+</script>
 </body>
 </html>

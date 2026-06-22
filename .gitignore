@@ -11,6 +11,9 @@ sandtorch/admin/index.locked.html.bak
 *.md
 *.txt
 
+# Неиспользуемое (песочница/наследие) — только локально.
+_attic/
+
 # Прочее
 .DS_Store
 Thumbs.db

@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#050403">
+<meta name="robots" content="noindex,nofollow">
+<title>Песчаная буря · админ-карта</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+  :root{ --bg:#050403; --panel:#0b0907cc; --line:rgba(214,160,82,.22);
+    --ink:#b89a63; --ink-dim:#6f5d3c; --amber-hot:#ffc24d; --green:#57c98a;
+    --mono:ui-monospace,"SF Mono","Cascadia Mono",Menlo,Consolas,monospace; }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{background:var(--bg);color:var(--ink);font-family:var(--mono);overflow:hidden}
+  #map{position:absolute;inset:0;background:var(--bg)}
+  .leaflet-container{background:var(--bg)}
+  #panel{position:absolute;left:10px;top:10px;z-index:1000;background:var(--panel);border:1px solid var(--line);
+    padding:11px 14px;backdrop-filter:blur(4px);font-size:12px;max-width:260px}
+  #panel h1{font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--amber-hot);margin-bottom:8px}
+  #panel .row{display:flex;justify-content:space-between;gap:12px;margin:2px 0}
+  #panel .k{color:var(--ink-dim);text-transform:uppercase;letter-spacing:.1em;font-size:10px}
+  #panel .v{color:var(--amber-hot);font-weight:600}
+  .pt{position:relative;display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;
+    border:2px solid #000;color:#0a0a0a;font:600 11px var(--mono);box-shadow:0 0 8px rgba(0,0,0,.6)}
+  .pt.todo{opacity:.32}
+  .chk{position:absolute;top:-6px;right:-6px;width:14px;height:14px;border-radius:50%;background:var(--green);
+    color:#000;font-size:9px;display:flex;align-items:center;justify-content:center;border:1px solid #000}
+  .dot{width:11px;height:11px;border-radius:50%;border:2px solid #000;box-shadow:0 0 7px rgba(0,0,0,.7)}
+  .dot.stale{opacity:.35}
+  .leaflet-tooltip.nm-tip{background:transparent;border:none;box-shadow:none;padding:0;color:#fff;
+    font:600 10px var(--mono);letter-spacing:.04em;text-shadow:0 0 4px #000,0 1px 3px #000}
+  .leaflet-tooltip.nm-tip:before{display:none}
+</style>
+</head>
+<body>
+  <div id="map"></div>
+  <div id="panel">
+    <h1>Админ · Песчаная буря</h1>
+    <div class="row"><span class="k">Коалиция точек</span><span class="v" id="cC">0 / 7</span></div>
+    <div class="row"><span class="k">Повстанцы точек</span><span class="v" id="cI">0 / 7</span></div>
+    <div class="row"><span class="k">Устройств онлайн</span><span class="v" id="dev">0</span></div>
+  </div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+  var firebaseConfig = {
+    apiKey:"AIzaSyCPrxWyVeUpNxtul8nOUNKRjf9Uo6wH-PA", authDomain:"milsim-pages.firebaseapp.com",
+    databaseURL:"https://milsim-pages-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId:"milsim-pages", storageBucket:"milsim-pages.firebasestorage.app",
+    messagingSenderId:"931830776663", appId:"1:931830776663:web:78976b5c11ce30dfc73412" };
+  firebase.initializeApp(firebaseConfig);
+  var db=firebase.database();
+
+  var SIDES={
+    coalition:{ color:'#4d9bff', pts:[
+      [43.804082,77.053668],[43.806936,77.055886],[43.809940,77.054615],[43.813578,77.057381],
+      [43.813807,77.051281],[43.809303,77.049874],[43.805200,77.050870] ]},
+    insurgents:{ color:'#ff4d4d', pts:[
+      [43.803964,77.056651],[43.806824,77.056102],[43.809647,77.058284],[43.813552,77.057619],
+      [43.813710,77.051218],[43.809332,77.050331],[43.804906,77.050699] ]}
+  };
+  var PARKING=L.latLng(43.799435,77.048836);
+  var GEO={north:43.81687355441687,south:43.78795236649337,east:77.07101927537143,west:77.04279873867411};
+  var bounds=[[GEO.south,GEO.west],[GEO.north,GEO.east]];
+  var STALE=5*60*1000;   // >5 мин без обновления — точка устройства считается «застывшей»
+
+  var map=L.map('map',{zoomSnap:0.25,maxZoom:20});
+  L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',{subdomains:['mt0','mt1','mt2','mt3'],maxZoom:21}).addTo(map);
+  map.fitBounds(bounds); map.setMaxBounds(L.latLngBounds(bounds).pad(0.3));
+  function set(id,t){ var e=document.getElementById(id); if(e) e.textContent=t; }
+  function namedMarker(ll,color,name){
+    return L.marker(ll,{icon:L.divIcon({className:'',iconSize:[22,22],iconAnchor:[11,11],html:'<div class="pt" style="background:'+color+'"></div>'})})
+      .bindTooltip(name,{permanent:true,direction:'right',offset:[10,0],className:'nm-tip'});
+  }
+
+  // ----- точки: все, достигнутые с галочкой -----
+  var ptLayer=L.layerGroup().addTo(map), achieved={coalition:{},insurgents:{}};
+  function renderPoints(){
+    ptLayer.clearLayers();
+    namedMarker(PARKING,'#57c98a','Парковка').addTo(ptLayer);
+    namedMarker(L.latLng(43.802538,77.050063),'#ff9a2e','Пункт хранения').addTo(ptLayer);
+    namedMarker(L.latLng(43.795844,77.050030),'#ffd24d','Эвакуация').addTo(ptLayer);
+    ['coalition','insurgents'].forEach(function(s){
+      var cfg=SIDES[s], a=achieved[s]||{};
+      cfg.pts.forEach(function(p,i){
+        var done=!!a[(i+1)];
+        var html='<div class="pt '+(done?'':'todo')+'" style="background:'+cfg.color+'">'+(i+1)+(done?'<span class="chk">✓</span>':'')+'</div>';
+        L.marker(L.latLng(p[0],p[1]),{icon:L.divIcon({className:'',iconSize:[22,22],iconAnchor:[11,11],html:html})}).addTo(ptLayer);
+      });
+      set(s==='coalition'?'cC':'cI', Object.keys(a).length+' / 7');
+    });
+  }
+  ['coalition','insurgents'].forEach(function(s){
+    db.ref('visits/'+s).on('value',function(snap){ achieved[s]=snap.val()||{}; renderPoints(); });
+  });
+
+  // ----- живые точки устройств -----
+  var liveLayer=L.layerGroup().addTo(map);
+  db.ref('live').on('value',function(snap){
+    liveLayer.clearLayers(); var live=snap.val()||{}, now=Date.now(), online=0;
+    Object.keys(live).forEach(function(dev){
+      var p=live[dev]; if(!p||p.lat==null) return;
+      var color=(SIDES[p.side]&&SIDES[p.side].color)||'#aaaaaa';
+      var stale=(now-(p.time||0))>STALE; if(!stale) online++;
+      L.marker(L.latLng(p.lat,p.lng),{icon:L.divIcon({className:'',iconSize:[11,11],iconAnchor:[5,5],
+        html:'<div class="dot '+(stale?'stale':'')+'" style="background:'+color+'"></div>'}),
+        title:p.side+' · '+dev}).addTo(liveLayer);
+    });
+    set('dev', online);
+  });
+
+  // ----- треки перемещений -----
+  var trackLayer=L.layerGroup().addTo(map);
+  db.ref('tracks').on('value',function(snap){
+    trackLayer.clearLayers(); var tr=snap.val()||{};
+    Object.keys(tr).forEach(function(dev){
+      var pts=tr[dev], arr=[], color='#888';
+      Object.keys(pts).forEach(function(k){ var e=pts[k]; if(e&&e.lat!=null){ arr.push(e); if(e.side&&SIDES[e.side]) color=SIDES[e.side].color; } });
+      arr.sort(function(a,b){ return (a.time||0)-(b.time||0); });   // от старых к свежим
+      var N=arr.length;
+      for(var i=0;i<N-1;i++){
+        var f=(i+1)/(N-1);              // 0..1: ближе к 1 — свежее
+        L.polyline([[arr[i].lat,arr[i].lng],[arr[i+1].lat,arr[i+1].lng]],
+          {color:color, weight:1+1.6*f, opacity:0.12+0.78*f}).addTo(trackLayer);  // старое тусклее, свежее ярче
+      }
+    });
+  });
+</script>
+</body>
+</html>

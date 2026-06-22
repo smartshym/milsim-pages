@@ -1,0 +1,26 @@
+:root{ --bg:#050403; --panel:#0b0907cc; --line:rgba(214,160,82,.22);
+  --ink:#b89a63; --ink-dim:#6f5d3c; --amber-hot:#ffc24d; --green:#57c98a;
+  --mono:ui-monospace,"SF Mono","Cascadia Mono",Menlo,Consolas,monospace; }
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--mono);overflow:hidden}
+#map{position:absolute;inset:0;background:var(--bg)}
+.leaflet-container{background:var(--bg)}
+#panel{position:absolute;left:10px;right:10px;bottom:10px;z-index:1000;background:var(--panel);border:1px solid var(--line);
+  padding:11px 14px;backdrop-filter:blur(4px);font-size:12px;display:grid;grid-template-columns:repeat(2,1fr);gap:3px 16px}
+#panel .k{color:var(--ink-dim);text-transform:uppercase;letter-spacing:.12em;font-size:10px}
+#panel .v{color:var(--amber-hot);font-weight:600}
+#panel .full{grid-column:1/-1}
+.me{width:16px;height:16px;border-radius:50%;background:var(--amber-hot);border:2px solid #000;box-shadow:0 0 10px var(--amber-hot)}
+.pt{display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;
+  border:2px solid #000;color:#0a0a0a;font:600 11px var(--mono);box-shadow:0 0 8px rgba(0,0,0,.7)}
+.pt.cur{outline:2px solid #fff;outline-offset:2px;animation:pulse 1.6s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 6px rgba(255,255,255,.4)}50%{box-shadow:0 0 16px rgba(255,255,255,.9)}}
+.legend{position:absolute;top:10px;left:10px;right:10px;z-index:1000;background:var(--panel);border:1px solid var(--line);
+  padding:8px 12px;backdrop-filter:blur(4px);font-size:10.5px;color:var(--ink);display:flex;flex-wrap:wrap;gap:6px 14px}
+.legend span{display:inline-flex;align-items:center}
+.legend i.d{display:inline-block;width:9px;height:9px;border-radius:50%;border:1px solid #000;margin-right:4px}
+.legend i.d.cur{outline:1px solid #fff;outline-offset:1px}
+.leaflet-tooltip.nm-tip{background:transparent;border:none;box-shadow:none;padding:0;color:#fff;
+  font:600 10px var(--mono);letter-spacing:.04em;text-shadow:0 0 4px #000,0 1px 3px #000}
+.leaflet-tooltip.nm-tip:before{display:none}
