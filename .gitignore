@@ -4,8 +4,15 @@
 _src/
 CONTEXT.md
 
+# Внутренние черновики сценариев — не публикуются.
+_design/
+
 # Бэкап зашифрованной версии админки (для отката) — не публикуем.
-admin/index.locked.html.bak
+sandtorch/admin/index.locked.html.bak
+
+# В remote — только html-страницы. Доки и исходники держим локально.
+*.md
+*.txt
 
 # Прочее
 .DS_Store
