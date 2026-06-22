@@ -19,6 +19,9 @@
   .tab{font-family:var(--mono);font-size:12px;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;
     padding:9px 12px;background:transparent;border:1px solid var(--line);color:var(--ink-dim)}
   .tab.on{border-color:var(--amber-hot);color:var(--amber-hot)}
+  .danger{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;
+    padding:8px 12px;background:transparent;border:1px solid #8a3b2c;color:#c66;margin-bottom:16px}
+  .danger:hover{background:rgba(138,59,44,.18)}
   .pane.hidden{display:none}
   .cnt{font-size:11px;color:var(--ink-dim);margin-bottom:8px;letter-spacing:.08em}
   table{width:100%;border-collapse:collapse;font-size:12px}
@@ -39,6 +42,7 @@
       <button class="tab" data-t="movC">Перемещения · Коалиция</button>
       <button class="tab" data-t="movI">Перемещения · Повстанцы</button>
     </div>
+    <button id="wipe" class="danger">Очистить всю БД (тест)</button>
     <div id="cap" class="pane"></div>
     <div id="movC" class="pane hidden"></div>
     <div id="movI" class="pane hidden"></div>
@@ -105,6 +109,12 @@
     shown.forEach(function(r){ html+='<tr><td class="t">'+fmt(r.time)+'</td><td class="dev">'+r.device+'</td><td>'+r.lat.toFixed(6)+', '+r.lng.toFixed(6)+'</td></tr>'; });
     el(id).innerHTML=html+'</table>';
   }
+
+  // очистка всей БД (для тестов) — с подтверждением
+  document.getElementById('wipe').onclick=function(){
+    if(!confirm('Очистить ВСЮ базу (захваты, позиции, треки)? Это безвозвратно.')) return;
+    db.ref().remove().then(function(){ alert('База очищена.'); }).catch(function(e){ alert('Ошибка: '+e.message); });
+  };
 </script>
 </body>
 </html>
