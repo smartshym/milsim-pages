@@ -37,6 +37,9 @@
   #panel .dist .v{color:var(--green);font-size:15px}
   #panel .full{grid-column:1/-1}
   #msg{color:var(--rust);min-height:14px}
+  #goPage{display:block;text-align:center;text-decoration:none;border:1px solid var(--green);
+    color:var(--green);padding:9px;letter-spacing:.08em;text-transform:uppercase;font-size:11px;margin-top:2px}
+  #goPage:hover{background:rgba(87,201,138,.08)}
 
   /* маркеры */
   .me{width:16px;height:16px;border-radius:50%;background:var(--amber-hot);
@@ -53,7 +56,7 @@
   <div id="map"></div>
   <div class="top">
     <div id="legend"></div>
-    <div class="hint">Тапни по точке — дистанция до неё. Тап по пустому месту — произвольная цель.</div>
+    <div class="hint">Тапни по точке — дистанция до неё и переход на её страницу. Тап по пустому — произвольная цель.</div>
   </div>
   <div id="panel">
     <div><div class="k">Широта</div><div class="v" id="lat">—</div></div>
@@ -65,6 +68,7 @@
     <div><div class="k">Пиксель X/Y</div><div class="v" id="px">—</div></div>
     <div><div class="k">Точек</div><div class="v" id="count">—</div></div>
     <div class="full"><div class="k">Обновлено</div><div class="v" id="time">ожидание GPS…</div></div>
+    <div class="full"><a id="goPage" href="#" style="display:none">Открыть страницу точки →</a></div>
     <div class="full"><div id="msg"></div></div>
   </div>
 
@@ -77,23 +81,26 @@
   var bounds = [[GEO.south, GEO.west],[GEO.north, GEO.east]];
 
   // ============================================================
-  //  ТОЧКИ ПО КАТЕГОРИЯМ. tag: метка на маркере для одиночных,
-  //  numbered:true -> маркеры нумеруются 1..N. Координаты или ссылки.
+  //  ТОЧКИ ПО КАТЕГОРИЯМ.
+  //  numbered:true -> маркеры 1..N; prefix+slugs -> страницы рекона.
+  //  tag -> метка одиночного маркера; page -> ссылка одиночной точки.
   // ============================================================
   var LISTS = {
-    coalition: { label:'Коалиция',  color:'#4d9bff', numbered:true, points:[
+    coalition: { label:'Коалиция',  color:'#4d9bff', numbered:true, prefix:'c',
+      slugs:['qxtlbu','rxases','pmvaxm','jlkxyr','jufkdt','vmipxc','isailq'], points:[
       "43.804082, 77.053668", "43.806936, 77.055886", "43.809940, 77.054615",
       "43.813578, 77.057381", "43.813807, 77.051281", "43.809303, 77.049874",
       "43.805200, 77.050870",
     ]},
-    insurgents:{ label:'Повстанцы', color:'#ff4d4d', numbered:true, points:[
+    insurgents:{ label:'Повстанцы', color:'#ff4d4d', numbered:true, prefix:'p',
+      slugs:['qobsxm','jhoiyk','bsginh','nxrabv','lsubvf','ulydur','ccpdnu'], points:[
       "43.803964, 77.056651", "43.806824, 77.056102", "43.809647, 77.058284",
       "43.813552, 77.057619", "43.813710, 77.051218", "43.809332, 77.050331",
       "43.804906, 77.050699",
     ]},
-    parking: { label:'Парковка',          color:'#57c98a', tag:'P', points:["43.799435, 77.048836"] },
-    capture: { label:'Точка захвата',      color:'#ff9a2e', tag:'З', points:["43.802538, 77.050063"] },
-    evac:    { label:'Эвакуация',          color:'#ffd24d', tag:'Э', points:["43.795844, 77.050030"] },
+    parking: { label:'Парковка',     color:'#57c98a', tag:'P', points:["43.799435, 77.048836"] },
+    capture: { label:'Точка захвата', color:'#ff9a2e', tag:'З', points:["43.802538, 77.050063"] },
+    evac:    { label:'Эвакуация',    color:'#ffd24d', tag:'Э', page:'../sandtorch/evac.html', points:["43.795844, 77.050030"] },
   };
 
   // парсер: строка координат или maps-ссылки -> L.latLng | null
@@ -113,27 +120,34 @@
   }
 
   var map = L.map('map', { zoomSnap:0.25, maxZoom:20 });
-  // живой спутник (Esri World Imagery — бесплатно/легально)
-  var sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    { maxZoom:20, maxNativeZoom:19, attribution:'Esri World Imagery' });
+  // спутник: у Google покрытие этого района (Алматинская обл.) лучше, чем у Esri
+  var gsat = L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
+    { subdomains:['mt0','mt1','mt2','mt3'], maxZoom:21, attribution:'Google' });
+  var esri = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    { maxZoom:20, maxNativeZoom:17, attribution:'Esri' });   // кап зума — чтобы не было «not available»
   // рисованная карта (georeferenced overlay)
   var drawn = L.imageOverlay('Boloto_v1.05.jpg', bounds);
-  sat.addTo(map);                                  // по умолчанию — спутник
+  gsat.addTo(map);                                 // по умолчанию — Google спутник
   map.fitBounds(bounds);
   map.setMaxBounds(L.latLngBounds(bounds).pad(0.3));
-  L.control.layers({ 'Спутник (Esri)':sat, 'Рисованная карта':drawn }, null, { collapsed:false }).addTo(map);
+  L.control.layers(
+    { 'Спутник (Google)':gsat, 'Спутник (Esri)':esri, 'Рисованная карта':drawn },
+    null, { collapsed:false }
+  ).addTo(map);
 
   function set(id,t){ var e=document.getElementById(id); if(e) e.textContent=t; }
   function px(ll){ return {
     x: Math.round((ll.lng-GEO.west)/(GEO.east-GEO.west)*GEO.imgW),
     y: Math.round((GEO.north-ll.lat)/(GEO.north-GEO.south)*GEO.imgH) }; }
 
-  // выбранная цель + линия
-  var selected=null, link=null, selEl=null;
-  function selectTarget(ll, label, el){
+  // выбранная цель + линия + кнопка перехода на страницу
+  var selected=null, link=null, selEl=null, go=document.getElementById('goPage');
+  function selectTarget(ll, label, el, page){
     selected=ll; set('tgtlbl', label);
     if(selEl) selEl.classList.remove('sel');
     selEl = el||null; if(selEl) selEl.classList.add('sel');
+    if(page){ go.href=page; go.textContent='Открыть: '+label+' →'; go.style.display='block'; }
+    else { go.style.display='none'; }
     update();
   }
 
@@ -147,13 +161,16 @@
       total++; n++;
       var txt = cfg.numbered ? (i+1) : (cfg.tag||'');
       var label = cfg.numbered ? (cfg.label+' '+(i+1)) : cfg.label;
+      var page = cfg.numbered
+        ? '../sandtorch/'+key+'/'+cfg.prefix+'-'+cfg.slugs[i]+'-0'+(i+1)+'.html'
+        : (cfg.page||null);
       var icon=L.divIcon({className:'', iconSize:[20,20], iconAnchor:[10,10],
         html:'<div class="pt" style="background:'+cfg.color+'">'+txt+'</div>'});
       var mk=L.marker(ll,{icon:icon, title:label}).addTo(map);
       mk.on('click', function(e){
         L.DomEvent.stopPropagation(e);
         var el = mk.getElement() ? mk.getElement().querySelector('.pt') : null;
-        selectTarget(ll, label, el);
+        selectTarget(ll, label, el, page);
       });
     });
     var chip=document.createElement('div'); chip.className='chip';
@@ -168,7 +185,7 @@
   map.on('click', function(e){
     if(!randMarker) randMarker=L.marker(e.latlng,{icon:randIcon}).addTo(map);
     else randMarker.setLatLng(e.latlng);
-    selectTarget(e.latlng, 'произвольная', null);
+    selectTarget(e.latlng, 'произвольная', null, null);
   });
 
   // игрок
