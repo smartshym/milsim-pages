@@ -65,7 +65,13 @@ window.State = (function(){
 
   function wipe(){ return root.remove(); }
 
+  // --- конфиг игры в БД (game/<run>/config): редактируется из admin.html ---
+  function loadConfig(cb){ root.child('config').once('value').then(function(s){ cb(s.val()); }, function(){ cb(null); }); }
+  function saveConfig(cfg){ return root.child('config').set(cfg); }
+  function watchConfig(cb){ root.child('config').on('value', function(s){ cb(s.val()); }); }
+
   return { init:init, deviceId:deviceId, serverNow:serverNow,
            emitCapture:emitCapture, emitFlag:emitFlag, reportPosition:reportPosition,
-           subscribe:subscribe, wipe:wipe };
+           subscribe:subscribe, wipe:wipe,
+           loadConfig:loadConfig, saveConfig:saveConfig, watchConfig:watchConfig };
 })();

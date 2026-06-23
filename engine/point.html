@@ -51,12 +51,18 @@
 <script src="state.js"></script>
 <script>
 (function(){
-  var GAME=window.GAME, card=document.getElementById('card');
+  var SB=window.GAME, card=document.getElementById('card');
   var id=(location.search.match(/id=([a-z0-9]+)/i)||[])[1];
   var sideParam=(location.search.match(/side=([a-z]+)/)||[])[1];
+  State.init(SB);
+  State.loadConfig(function(db){
+    var GAME=Object.assign({}, SB);
+    if(db){ ['sides','geo','mechanics','objectives'].forEach(function(k){ if(db[k]) GAME[k]=db[k]; }); }
+    run(GAME);
+  });
+  function run(GAME){
   var o=(GAME.objectives||[]).filter(function(x){return x.id===id;})[0];
   if(!o){ card.innerHTML='<div class="lead">Неизвестная точка.</div>'; return; }
-  State.init(GAME);
   var side = (o.side!=='shared') ? o.side : sideParam;
   var sideLabel = (GAME.sides[side]||{}).label || '';
   var coordsStr = o.at[0].toFixed(6)+', '+o.at[1].toFixed(6);
@@ -121,6 +127,7 @@
     }
     card.querySelector('#go').onclick=check;
     boxes[0].focus();
+  }
   }
 })();
 </script>

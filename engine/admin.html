@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#050403">
+<meta name="robots" content="noindex,nofollow">
+<title>CRM · движок</title>
+<style>
+  :root{ --bg:#050403; --panel:#0b0907; --line:rgba(214,160,82,.2);
+    --ink:#b89a63; --ink-dim:#6f5d3c; --amber:#e3ad45; --amber-hot:#ffc24d; --green:#57c98a; --rust:#8a3b2c;
+    --mono:ui-monospace,"SF Mono","Cascadia Mono",Menlo,Consolas,monospace; }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:var(--mono);padding:20px 16px 60px}
+  .wrap{max-width:1000px;margin:0 auto}
+  h1{font-size:15px;letter-spacing:.22em;text-transform:uppercase;color:var(--amber);margin-bottom:4px}
+  .sub{font-size:11px;color:var(--ink-dim);margin-bottom:18px;letter-spacing:.1em}
+  h2{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--amber-hot);margin:22px 0 10px}
+  .bar{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+  button,.lnk{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;
+    padding:9px 12px;background:transparent;border:1px solid var(--line);color:var(--ink);text-decoration:none}
+  button:hover,.lnk:hover{border-color:var(--amber);color:var(--amber)}
+  button.pri{border-color:var(--green);color:var(--green)}
+  button.del{border-color:var(--rust);color:#c66}
+  #msg{font-size:11px;color:var(--green);margin-left:6px;align-self:center}
+  table{width:100%;border-collapse:collapse;font-size:11.5px;margin-bottom:8px}
+  th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--ink-dim);text-transform:uppercase;letter-spacing:.08em;font-size:9.5px}
+  td .mini{padding:4px 7px;font-size:10px;margin-right:4px}
+  .form{border:1px solid var(--line);background:var(--panel);padding:14px;display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:8px}
+  .form label{display:block;font-size:9.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-dim);margin-bottom:4px}
+  .form input,.form select{width:100%;font-family:var(--mono);font-size:12px;color:var(--amber-hot);
+    background:rgba(0,0,0,.35);border:1px solid var(--line);padding:8px;outline:none}
+  .form .full{grid-column:1/-1}
+  textarea{width:100%;min-height:120px;font-family:var(--mono);font-size:12px;color:var(--amber-hot);
+    background:rgba(0,0,0,.35);border:1px solid var(--line);padding:10px;outline:none}
+  .c-coalition{color:#4d9bff}.c-insurgents{color:#ff4d4d}.c-shared{color:var(--green)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>CRM · конфигуратор</h1>
+  <div class="sub">правишь точки/мету → «Сохранить в БД» → движок (map/point) подхватывает. namespace: game/<span id="run"></span>/config</div>
+
+  <div class="bar">
+    <button class="pri" id="save">Сохранить в БД</button>
+    <button id="seed">Загрузить дефолт</button>
+    <a class="lnk" id="lAdmin" target="_blank">Карта · админ</a>
+    <span id="msg"></span>
+  </div>
+
+  <h2>Точки</h2>
+  <div id="tbl"></div>
+  <button id="add">+ Добавить точку</button>
+  <div id="form" style="display:none"></div>
+
+  <h2>Мета (стороны / гео / механика) — JSON</h2>
+  <textarea id="meta"></textarea>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="config.js"></script>
+<script src="state.js"></script>
+<script>
+(function(){
+  var SB=window.GAME; State.init(SB);
+  document.getElementById('run').textContent=SB.run;
+  document.getElementById('lAdmin').href='map.html?view=admin';
+
+  function defCfg(){ return JSON.parse(JSON.stringify({sides:SB.sides, shared:SB.shared, geo:SB.geo, mechanics:SB.mechanics, objectives:SB.objectives})); }
+  var cfg=null, editIdx=null;
+  function el(id){ return document.getElementById(id); }
+  function msg(t){ el('msg').textContent=t; setTimeout(function(){ el('msg').textContent=''; },2500); }
+
+  State.loadConfig(function(db){ cfg = db || defCfg(); if(!cfg.objectives) cfg.objectives=[]; renderAll(); });
+
+  function renderAll(){ renderTable(); renderMeta(); }
+  function renderMeta(){ el('meta').value=JSON.stringify({sides:cfg.sides,shared:cfg.shared,geo:cfg.geo,mechanics:cfg.mechanics}, null, 2); }
+
+  function revealStr(o){ var r=o.reveal||'always'; if(typeof r==='string') return r; return (r.flag||'?')+'/'+(r.scope||'any'); }
+  function onOpenStr(o){ if(!o.onOpen) return '—'; return o.onOpen.event+(o.onOpen.flag?(':'+o.onOpen.flag):'')+(o.onOpen.contest?'+timer':''); }
+
+  function renderTable(){
+    var rows=cfg.objectives.map(function(o,i){
+      return '<tr><td>'+(o.id||'')+'</td><td>'+(o.kind||'')+'</td><td class="c-'+(o.side||'')+'">'+(o.side||'')+'</td>'
+        +'<td>'+(o.at?o.at[0].toFixed(5)+', '+o.at[1].toFixed(5):'—')+'</td>'
+        +'<td>'+revealStr(o)+'</td><td>'+onOpenStr(o)+'</td>'
+        +'<td><button class="mini" data-edit="'+i+'">ред.</button><button class="mini del" data-del="'+i+'">×</button>'
+        +'<a class="lnk mini" target="_blank" href="point.html?id='+(o.id||'')+(o.side==='shared'?'&side=coalition':'')+'">QR</a></td></tr>';
+    }).join('');
+    el('tbl').innerHTML='<table><tr><th>id</th><th>kind</th><th>side</th><th>координаты</th><th>reveal</th><th>onOpen</th><th></th></tr>'+rows+'</table>';
+    el('tbl').querySelectorAll('[data-edit]').forEach(function(b){ b.onclick=function(){ openForm(+b.dataset.edit); }; });
+    el('tbl').querySelectorAll('[data-del]').forEach(function(b){ b.onclick=function(){ if(confirm('Удалить точку?')){ cfg.objectives.splice(+b.dataset.del,1); renderTable(); } }; });
+  }
+
+  function sideOpts(sel){ var ks=Object.keys(cfg.sides).concat(['shared']); return ks.map(function(s){ return '<option '+(s===sel?'selected':'')+'>'+s+'</option>'; }).join(''); }
+  function opt(list,sel){ return list.map(function(s){ return '<option '+(s===sel?'selected':'')+'>'+s+'</option>'; }).join(''); }
+
+  function openForm(idx){
+    editIdx=idx;
+    var o = idx===null ? {kind:'recon',side:'coalition',reveal:'captured',onOpen:{event:'capture'},at:[43.80,77.05]} : cfg.objectives[idx];
+    var rv = (typeof (o.reveal||'always')==='string') ? (o.reveal||'always') : (o.reveal.scope==='side'?'flag-side':'flag-any');
+    var rvFlag = (o.reveal&&o.reveal.flag)||'';
+    var oo = !o.onOpen ? 'none' : (o.onOpen.event==='capture'?'capture':(o.onOpen.contest?'flag-contest':'flag'));
+    var ooFlag = (o.onOpen&&o.onOpen.flag)||'';
+    var f=el('form'); f.style.display='grid'; f.className='form';
+    f.innerHTML=''
+      +'<div><label>id</label><input id="f_id" value="'+(o.id||'')+'"></div>'
+      +'<div><label>kind</label><select id="f_kind">'+opt(['recon','terminal','parking','storage','evac'],o.kind)+'</select></div>'
+      +'<div><label>side</label><select id="f_side">'+sideOpts(o.side)+'</select></div>'
+      +'<div><label>n (номер)</label><input id="f_n" value="'+(o.n!=null?o.n:'')+'"></div>'
+      +'<div><label>lat</label><input id="f_lat" value="'+(o.at?o.at[0]:'')+'"></div>'
+      +'<div><label>lng</label><input id="f_lng" value="'+(o.at?o.at[1]:'')+'"></div>'
+      +'<div><label>label</label><input id="f_label" value="'+(o.label||'')+'"></div>'
+      +'<div><label>reveal</label><select id="f_rv">'+opt(['always','captured','flag-side','flag-any'],rv)+'</select></div>'
+      +'<div><label>reveal flag</label><input id="f_rvflag" value="'+rvFlag+'"></div>'
+      +'<div><label>onOpen</label><select id="f_oo">'+opt(['none','capture','flag','flag-contest'],oo)+'</select></div>'
+      +'<div><label>onOpen flag</label><input id="f_ooflag" value="'+ooFlag+'"></div>'
+      +'<div><label>onSuccess flag (терминал)</label><input id="f_sf" value="'+((o.onSuccess&&o.onSuccess.flag)||'')+'"></div>'
+      +'<div class="full"><label>code (терминал, через запятую)</label><input id="f_code" value="'+((o.code||[]).join(','))+'"></div>'
+      +'<div class="full"><button class="pri" id="f_save">Применить</button> <button id="f_cancel">Отмена</button></div>';
+    el('f_save').onclick=saveForm; el('f_cancel').onclick=function(){ f.style.display='none'; };
+  }
+
+  function val(id){ return el(id).value.trim(); }
+  function saveForm(){
+    var o={ id:val('f_id'), kind:val('f_kind'), side:val('f_side'), at:[parseFloat(val('f_lat')),parseFloat(val('f_lng'))] };
+    if(val('f_n')!=='') o.n=parseInt(val('f_n'),10);
+    if(val('f_label')) o.label=val('f_label');
+    var rv=val('f_rv'), rvf=val('f_rvflag');
+    o.reveal = rv==='flag-side'?{flag:rvf,scope:'side'} : rv==='flag-any'?{flag:rvf,scope:'any'} : rv;
+    var oo=val('f_oo'), oof=val('f_ooflag');
+    if(oo==='capture') o.onOpen={event:'capture'};
+    else if(oo==='flag') o.onOpen={event:'flag',flag:oof};
+    else if(oo==='flag-contest') o.onOpen={event:'flag',flag:oof,contest:true};
+    if(val('f_sf')) o.onSuccess={event:'flag',flag:val('f_sf')};
+    if(val('f_code')) o.code=val('f_code').split(',').map(function(s){return s.trim().toUpperCase();});
+    if(!o.id){ alert('Нужен id'); return; }
+    if(editIdx===null) cfg.objectives.push(o); else cfg.objectives[editIdx]=o;
+    el('form').style.display='none'; renderTable();
+  }
+
+  el('add').onclick=function(){ openForm(null); };
+  el('seed').onclick=function(){ if(confirm('Заменить текущий конфиг дефолтным?')){ cfg=defCfg(); renderAll(); } };
+  el('save').onclick=function(){
+    try{ var m=JSON.parse(el('meta').value); cfg.sides=m.sides; cfg.shared=m.shared; cfg.geo=m.geo; cfg.mechanics=m.mechanics; }
+    catch(e){ alert('Мета-JSON не парсится: '+e.message); return; }
+    State.saveConfig(cfg).then(function(){ msg('сохранено ✓'); }, function(e){ alert('Ошибка: '+e.message); });
+  };
+})();
+</script>
+</body>
+</html>
