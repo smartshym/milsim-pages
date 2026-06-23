@@ -17,6 +17,7 @@
       [43.813710,77.051218],[43.809332,77.050331],[43.804906,77.050699] ]}
   };
   var PARKING=L.latLng(43.799435,77.048836);
+  var STORAGE=L.latLng(43.802538,77.050063), EVAC=L.latLng(43.795844,77.050030), myUnlocked=false;
   var GEO={north:43.81687355441687,south:43.78795236649337,east:77.07101927537143,west:77.04279873867411};
   var bounds=[[GEO.south,GEO.west],[GEO.north,GEO.east]];
 
@@ -28,8 +29,9 @@
 
   // легенда — что значат маркеры
   var lg=document.createElement('div'); lg.className='legend';
-  lg.innerHTML='<span><i class="d" style="background:#4d9bff"></i>взято · Коалиция</span>'
-    +'<span><i class="d" style="background:#ff4d4d"></i>взято · Повстанцы</span>'
+  lg.innerHTML='<span><i class="d" style="background:#4d9bff"></i>Коалиция</span>'
+    +'<span><i class="d" style="background:#ff4d4d"></i>Повстанцы</span>'
+    +'<span>✓ — взято · пульс — ваша цель</span>'
     +'<span><i class="d" style="background:#57c98a"></i>парковка</span>';
   document.body.appendChild(lg);
 
@@ -50,14 +52,31 @@
       var cfg=SIDES[s], a=achieved[s]||{};
       Object.keys(a).forEach(function(k){
         var i=parseInt(k,10)-1; if(i<0||i>=cfg.pts.length) return;
-        L.marker(L.latLng(cfg.pts[i][0],cfg.pts[i][1]),{icon:L.divIcon({className:'',iconSize:[22,22],iconAnchor:[11,11],html:'<div class="pt" style="background:'+cfg.color+'">'+(i+1)+'</div>'})}).addTo(ptLayer);
+        L.marker(L.latLng(cfg.pts[i][0],cfg.pts[i][1]),{icon:L.divIcon({className:'',iconSize:[22,22],iconAnchor:[11,11],html:'<div class="pt" style="background:'+cfg.color+'">'+(i+1)+'<span class="chk">✓</span></div>'})}).addTo(ptLayer);
       });
       set(s==='coalition'?'cC':'cI', Object.keys(a).length+' / 7');
     });
+    // следующая цель своей стороны (та, которую надо достичь) — пульсирует
+    if(MY_SIDE && SIDES[MY_SIDE]){
+      var mc=SIDES[MY_SIDE], ma=achieved[MY_SIDE]||{}, nx=-1;
+      for(var j=0;j<mc.pts.length;j++){ if(!ma[(j+1)]){ nx=j; break; } }
+      if(nx>=0){
+        L.marker(L.latLng(mc.pts[nx][0],mc.pts[nx][1]),{icon:L.divIcon({className:'',iconSize:[22,22],iconAnchor:[11,11],
+          html:'<div class="pt cur" style="background:'+mc.color+'">'+(nx+1)+'</div>'})}).addTo(ptLayer);
+      }
+    }
+    // пункт хранения + эвакуация — только после ввода верного кода своей стороной
+    if(myUnlocked){
+      namedMarker(STORAGE,'#ff9a2e','Пункт хранения').addTo(ptLayer);
+      namedMarker(EVAC,'#ffd24d','Эвакуация').addTo(ptLayer);
+    }
   }
   ['coalition','insurgents'].forEach(function(s){
     db.ref('visits/'+s).on('value',function(snap){ achieved[s]=snap.val()||{}; renderPoints(); });
   });
+  if(MY_SIDE && SIDES[MY_SIDE]){
+    db.ref('unlocked/'+MY_SIDE).on('value',function(snap){ myUnlocked=!!snap.val(); renderPoints(); });
+  }
 
   // ----- своя позиция + отправка раз в минуту -----
   var me=null,acc=null,last=null;

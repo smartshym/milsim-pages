@@ -32,6 +32,8 @@
   .leaflet-tooltip.nm-tip{background:transparent;border:none;box-shadow:none;padding:0;color:#fff;
     font:600 10px var(--mono);letter-spacing:.04em;text-shadow:0 0 4px #000,0 1px 3px #000}
   .leaflet-tooltip.nm-tip:before{display:none}
+  .nm-tip .nm-name{display:block}
+  .nm-tip .nm-sub{display:block;font-size:9px;font-weight:400;opacity:.95}
 </style>
 </head>
 <body>
@@ -72,9 +74,17 @@
   L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',{subdomains:['mt0','mt1','mt2','mt3'],maxZoom:21}).addTo(map);
   map.fitBounds(bounds); map.setMaxBounds(L.latLngBounds(bounds).pad(0.3));
   function set(id,t){ var e=document.getElementById(id); if(e) e.textContent=t; }
-  function namedMarker(ll,color,name){
+  var unlocked={};
+  function accessSub(){
+    var p=[];
+    if(unlocked.coalition) p.push('<span style="color:#4d9bff">Коалиция</span>');
+    if(unlocked.insurgents) p.push('<span style="color:#ff4d4d">Повстанцы</span>');
+    return 'доступ: '+(p.length?p.join(' · '):'—');
+  }
+  function namedMarker(ll,color,name,sub){
+    var html='<span class="nm-name">'+name+'</span>'+(sub?'<span class="nm-sub">'+sub+'</span>':'');
     return L.marker(ll,{icon:L.divIcon({className:'',iconSize:[22,22],iconAnchor:[11,11],html:'<div class="pt" style="background:'+color+'"></div>'})})
-      .bindTooltip(name,{permanent:true,direction:'right',offset:[10,0],className:'nm-tip'});
+      .bindTooltip(html,{permanent:true,direction:'right',offset:[10,0],className:'nm-tip'});
   }
 
   // ----- точки: все, достигнутые с галочкой -----
@@ -82,8 +92,8 @@
   function renderPoints(){
     ptLayer.clearLayers();
     namedMarker(PARKING,'#57c98a','Парковка').addTo(ptLayer);
-    namedMarker(L.latLng(43.802538,77.050063),'#ff9a2e','Пункт хранения').addTo(ptLayer);
-    namedMarker(L.latLng(43.795844,77.050030),'#ffd24d','Эвакуация').addTo(ptLayer);
+    namedMarker(L.latLng(43.802538,77.050063),'#ff9a2e','Пункт хранения',accessSub()).addTo(ptLayer);
+    namedMarker(L.latLng(43.795844,77.050030),'#ffd24d','Эвакуация',accessSub()).addTo(ptLayer);
     ['coalition','insurgents'].forEach(function(s){
       var cfg=SIDES[s], a=achieved[s]||{};
       cfg.pts.forEach(function(p,i){
@@ -97,6 +107,7 @@
   ['coalition','insurgents'].forEach(function(s){
     db.ref('visits/'+s).on('value',function(snap){ achieved[s]=snap.val()||{}; renderPoints(); });
   });
+  db.ref('unlocked').on('value',function(snap){ unlocked=snap.val()||{}; renderPoints(); });
 
   // ----- живые точки устройств -----
   var liveLayer=L.layerGroup().addTo(map);

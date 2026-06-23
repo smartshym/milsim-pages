@@ -224,6 +224,7 @@
       setStatus('Дешифровано', 'good');
       document.getElementById('lockView').classList.add('hidden');
       document.getElementById('openView').classList.remove('hidden');
+      try{ var _s=location.pathname.indexOf('/coalition/')>=0?'coalition':'insurgents'; if(window.firebase&&firebase.database) firebase.database().ref('unlocked/'+_s).set({time:Date.now(),device:localStorage.getItem('sb_device')||''}); }catch(e){}
       bindCopy(document.getElementById('copyBtn'), document.getElementById('coords').textContent.trim());
     }
 
