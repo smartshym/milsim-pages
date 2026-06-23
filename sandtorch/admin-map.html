@@ -29,6 +29,7 @@
     color:#000;font-size:9px;display:flex;align-items:center;justify-content:center;border:1px solid #000}
   .dot{width:11px;height:11px;border-radius:50%;border:2px solid #000;box-shadow:0 0 7px rgba(0,0,0,.7)}
   .dot.stale{opacity:.35}
+  .me{width:16px;height:16px;border-radius:50%;background:var(--amber-hot);border:2px solid #000;box-shadow:0 0 10px var(--amber-hot)}
   .leaflet-tooltip.nm-tip{background:transparent;border:none;box-shadow:none;padding:0;color:#fff;
     font:600 10px var(--mono);letter-spacing:.04em;text-shadow:0 0 4px #000,0 1px 3px #000}
   .leaflet-tooltip.nm-tip:before{display:none}
@@ -43,6 +44,8 @@
     <div class="row"><span class="k">Коалиция точек</span><span class="v" id="cC">0 / 7</span></div>
     <div class="row"><span class="k">Повстанцы точек</span><span class="v" id="cI">0 / 7</span></div>
     <div class="row"><span class="k">Устройств онлайн</span><span class="v" id="dev">0</span></div>
+    <div class="row"><span class="k">До точки</span><span class="v" id="dist">—</span></div>
+    <div class="row"><span class="k">Направление</span><span class="v" id="brg">—</span></div>
   </div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -87,19 +90,44 @@
       .bindTooltip(html,{permanent:true,direction:'right',offset:[10,0],className:'nm-tip'});
   }
 
+  // ----- своя позиция ГМ + тап по точке: пунктир + дистанция + направление -----
+  var meMk=null, accMk=null, last=null, selected=null, link=null;
+  function bearing(a,b){ var la1=a.lat*Math.PI/180,la2=b.lat*Math.PI/180,dLon=(b.lng-a.lng)*Math.PI/180;
+    var y=Math.sin(dLon)*Math.cos(la2), x=Math.cos(la1)*Math.sin(la2)-Math.sin(la1)*Math.cos(la2)*Math.cos(dLon);
+    return (Math.atan2(y,x)*180/Math.PI+360)%360; }
+  function bearingStr(a,b){ var d=bearing(a,b),dirs=['С','СВ','В','ЮВ','Ю','ЮЗ','З','СЗ']; return dirs[Math.round(d/45)%8]+' '+Math.round(d)+'°'; }
+  function select(ll){ selected=ll; updateLine(); }
+  function bindSel(m,ll){ m.on('click',function(e){ L.DomEvent.stopPropagation(e); select(ll); }); return m; }
+  function updateLine(){
+    if(!selected) return;
+    if(last){ var d=map.distance(last,selected);
+      set('dist', d>=1000?(d/1000).toFixed(2)+' км':Math.round(d)+' м'); set('brg', bearingStr(last,selected));
+      if(!link) link=L.polyline([last,selected],{color:'#ffc24d',weight:1.5,dashArray:'5,5'}).addTo(map);
+      else link.setLatLngs([last,selected]);
+    } else { set('dist','—'); set('brg','нет GPS'); }
+  }
+  if(navigator.geolocation){ navigator.geolocation.watchPosition(function(p){ var c=p.coords; last=L.latLng(c.latitude,c.longitude);
+    if(!meMk){ meMk=L.marker(last,{icon:L.divIcon({className:'',html:'<div class="me"></div>',iconSize:[16,16],iconAnchor:[8,8]})}).addTo(map);
+               accMk=L.circle(last,{radius:c.accuracy,color:'#ffc24d',weight:1,fillOpacity:.06}).addTo(map); }
+    else { meMk.setLatLng(last); accMk.setLatLng(last).setRadius(c.accuracy); }
+    updateLine();
+  }, function(){}, {enableHighAccuracy:true,maximumAge:1000,timeout:15000}); }
+
   // ----- точки: все, достигнутые с галочкой -----
   var ptLayer=L.layerGroup().addTo(map), achieved={coalition:{},insurgents:{}};
   function renderPoints(){
     ptLayer.clearLayers();
-    namedMarker(PARKING,'#57c98a','Парковка').addTo(ptLayer);
-    namedMarker(L.latLng(43.802538,77.050063),'#ff9a2e','Пункт хранения',accessSub(unlocked)).addTo(ptLayer);
-    namedMarker(L.latLng(43.795844,77.050030),'#ffd24d','Эвакуация',accessSub(evacUnlocked)).addTo(ptLayer);
+    var STO=L.latLng(43.802538,77.050063), EVA=L.latLng(43.795844,77.050030);
+    bindSel(namedMarker(PARKING,'#57c98a','Парковка'),PARKING).addTo(ptLayer);
+    bindSel(namedMarker(STO,'#ff9a2e','Пункт хранения',accessSub(unlocked)),STO).addTo(ptLayer);
+    bindSel(namedMarker(EVA,'#ffd24d','Эвакуация',accessSub(evacUnlocked)),EVA).addTo(ptLayer);
     ['coalition','insurgents'].forEach(function(s){
       var cfg=SIDES[s], a=achieved[s]||{};
       cfg.pts.forEach(function(p,i){
         var done=!!a[(i+1)];
         var html='<div class="pt '+(done?'':'todo')+'" style="background:'+cfg.color+'">'+(i+1)+(done?'<span class="chk">✓</span>':'')+'</div>';
-        L.marker(L.latLng(p[0],p[1]),{icon:L.divIcon({className:'',iconSize:[22,22],iconAnchor:[11,11],html:html})}).addTo(ptLayer);
+        var pll=L.latLng(p[0],p[1]);
+        bindSel(L.marker(pll,{icon:L.divIcon({className:'',iconSize:[22,22],iconAnchor:[11,11],html:html})}),pll).addTo(ptLayer);
       });
       set(s==='coalition'?'cC':'cI', Object.keys(a).length+' / 7');
     });
