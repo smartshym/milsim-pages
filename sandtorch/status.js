@@ -18,7 +18,7 @@
   };
   var PARKING=L.latLng(43.799435,77.048836);
   var STORAGE=L.latLng(43.802538,77.050063), EVAC=L.latLng(43.795844,77.050030), myStorage=false, myEvac=false;
-  var evacData={}, CAPTURE_SEC=15*60, serverOffset=0;   // длительность захвата (сек, настраиваемо) + смещение к серверному времени
+  var evacData={}, CAPTURE_SEC=1*60, serverOffset=0;   // длительность захвата (сек) — 1 мин НА ВРЕМЯ ТЕСТА (боевое ~15 мин) + смещение к серверному времени
   db.ref('.info/serverTimeOffset').on('value',function(s){ serverOffset=s.val()||0; });   // серверное время Firebase у всех одинаковое
   var GEO={north:43.81687355441687,south:43.78795236649337,east:77.07101927537143,west:77.04279873867411};
   var bounds=[[GEO.south,GEO.west],[GEO.north,GEO.east]];
