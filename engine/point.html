@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#050403">
+<title>Точка</title>
+<style>
+  :root{ --bg:#050403; --panel:#0b0907; --line:rgba(214,160,82,.16); --line-soft:rgba(214,160,82,.08);
+    --ink:#b89a63; --ink-dim:#6f5d3c; --amber:#e3ad45; --amber-hot:#ffc24d; --rust:#8a3b2c;
+    --green:#57c98a; --green-hot:#7fe3a8; --mono:ui-monospace,"SF Mono","Cascadia Mono",Menlo,Consolas,monospace; }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{background:var(--bg);color:var(--ink);font-family:var(--mono);-webkit-font-smoothing:antialiased;
+    background-image:linear-gradient(var(--line-soft) 1px,transparent 1px),linear-gradient(90deg,var(--line-soft) 1px,transparent 1px);
+    background-size:38px 38px;display:flex;align-items:center;justify-content:center;min-height:100dvh;padding:24px}
+  .card{position:relative;width:100%;max-width:420px;background:linear-gradient(180deg,var(--panel),#070605);
+    border:1px solid var(--line);padding:30px 26px 26px}
+  .card.evac{border-color:rgba(87,201,138,.3)}
+  .eyebrow{display:flex;align-items:center;gap:9px;font-size:11px;letter-spacing:.26em;text-transform:uppercase;color:var(--ink-dim);margin-bottom:22px}
+  .eyebrow .tick{width:7px;height:7px;background:var(--rust)}
+  .card.evac .eyebrow .tick{background:var(--green)}
+  .eyebrow .rule{flex:1;height:1px;background:var(--line)}
+  .point{display:flex;align-items:baseline;gap:14px;margin-bottom:20px}
+  .point .lbl{font-size:13px;letter-spacing:.3em;text-transform:uppercase;color:var(--ink-dim)}
+  .point .num{font-size:48px;line-height:.85;font-weight:600;color:var(--amber)}
+  .card.evac .point .num{font-size:38px;letter-spacing:.06em;color:var(--green)}
+  .lead{font-size:12.5px;line-height:1.6;color:var(--ink);margin-bottom:20px}
+  .readout{border:1px solid var(--line);background:rgba(0,0,0,.35);padding:16px;margin-bottom:6px}
+  .readout .head{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--ink-dim);margin-bottom:10px}
+  .coords{font-size:21px;font-weight:600;color:var(--amber-hot);word-break:break-word}
+  .card.evac .coords{color:var(--green-hot)}
+  .actions{display:flex;flex-direction:column;gap:10px;margin-top:18px}
+  .btn{appearance:none;cursor:pointer;text-decoration:none;font-family:var(--mono);font-size:13px;letter-spacing:.12em;
+    text-transform:uppercase;padding:14px;text-align:center;border:1px solid var(--line);background:transparent;color:var(--ink)}
+  .btn:hover{border-color:var(--amber);color:var(--amber)}
+  .btn.ok{border-color:var(--green);color:var(--green)}
+  .code{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:6px}
+  .code input{font-family:var(--mono);font-size:17px;text-align:center;text-transform:uppercase;color:var(--amber-hot);
+    background:rgba(0,0,0,.35);border:1px solid var(--line);padding:13px 4px;width:100%;outline:none}
+  .status{min-height:16px;margin-top:12px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-dim)}
+  .status.bad{color:var(--rust)} .status.good{color:var(--green)}
+  .hidden{display:none}
+</style>
+</head>
+<body>
+  <main class="card" id="card"></main>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="config.js"></script>
+<script src="state.js"></script>
+<script>
+(function(){
+  var GAME=window.GAME, card=document.getElementById('card');
+  var id=(location.search.match(/id=([a-z0-9]+)/i)||[])[1];
+  var sideParam=(location.search.match(/side=([a-z]+)/)||[])[1];
+  var o=(GAME.objectives||[]).filter(function(x){return x.id===id;})[0];
+  if(!o){ card.innerHTML='<div class="lead">Неизвестная точка.</div>'; return; }
+  State.init(GAME);
+  var side = (o.side!=='shared') ? o.side : sideParam;
+  var sideLabel = (GAME.sides[side]||{}).label || '';
+  var coordsStr = o.at[0].toFixed(6)+', '+o.at[1].toFixed(6);
+  var mapsUrl = 'https://www.google.com/maps?q='+o.at[0]+','+o.at[1];
+
+  function copyBtn(text){ var b=document.createElement('button'); b.className='btn'; b.textContent='Скопировать координаты';
+    b.onclick=function(){ (navigator.clipboard?navigator.clipboard.writeText(text):Promise.reject()).then(ok,ok); function ok(){ b.classList.add('ok'); b.textContent='Скопировано ✓'; } }; return b; }
+  function readout(head,val,cls){ return '<div class="readout"><div class="head">'+head+'</div><div class="coords '+(cls||'')+'">'+val+'</div></div>'; }
+
+  // ---- emit события открытия ----
+  if(o.onOpen){
+    if(o.onOpen.event==='capture') State.emitCapture(o.id, side);
+    else if(o.onOpen.event==='flag' && side) State.emitFlag(side, o.onOpen.flag, !!o.onOpen.contest);
+  }
+
+  // ---- РАЗВЕДТОЧКА ----
+  if(o.kind==='recon'){
+    card.innerHTML='<div class="eyebrow"><span class="tick"></span>'+sideLabel+' · Разведточка<span class="rule"></span></div>'
+      +'<div class="point"><span class="lbl">Точка</span><span class="num">'+o.n+'</span></div>'
+      +readout('Координаты',coordsStr)
+      +'<div class="actions"><a class="btn" href="'+mapsUrl+'" target="_blank" rel="noopener">Открыть в картах</a></div>';
+    card.querySelector('.actions').prepend(copyBtn(coordsStr));
+  }
+
+  // ---- ЭВАКУАЦИЯ ----
+  else if(o.kind==='evac'){
+    card.classList.add('evac');
+    if(!side){ card.innerHTML='<div class="lead">QR без стороны. Нужен параметр <b>?side=</b>.</div>'; return; }
+    card.innerHTML='<div class="eyebrow"><span class="tick"></span>'+sideLabel+' · Эвакуация<span class="rule"></span></div>'
+      +'<div class="point"><span class="lbl">Зона</span><span class="num">EVAC</span></div>'
+      +'<p class="lead">«Шихаб» активирован — борт на подходе. Выходи к зоне и держи периметр.</p>'
+      +readout('Координаты эвакуации',coordsStr)
+      +'<div class="actions"><a class="btn" href="'+mapsUrl+'" target="_blank" rel="noopener">Открыть в картах</a></div>';
+    card.querySelector('.actions').prepend(copyBtn(coordsStr));
+  }
+
+  // ---- ТЕРМИНАЛ ----
+  else if(o.kind==='terminal'){
+    var inputs=''; for(var k=0;k<o.code.length;k++) inputs+='<input maxlength="5" inputmode="latin" autocomplete="off">';
+    card.innerHTML='<div class="eyebrow"><span class="tick"></span>'+sideLabel+' · Дешифровка<span class="rule"></span></div>'
+      +'<div class="point"><span class="lbl">Пункт</span><span class="num">'+o.n+'</span></div>'
+      +'<p class="lead">Введи собранный код доступа.</p>'
+      +'<div class="code" id="code">'+inputs+'</div>'
+      +'<div class="status" id="st">Ожидание ввода</div>'
+      +'<div class="actions"><button class="btn" id="go">Подтвердить</button></div>'
+      +'<div id="ok" class="hidden"></div>';
+    var boxes=[].slice.call(card.querySelectorAll('.code input')), st=card.querySelector('#st');
+    boxes.forEach(function(b,i){ b.addEventListener('input',function(){ b.value=b.value.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,5);
+      if(b.value.length===5&&i<boxes.length-1) boxes[i+1].focus(); }); });
+    function check(){
+      var ok=boxes.every(function(b,i){ return b.value===o.code[i]; });
+      if(!ok){ st.textContent='Код отклонён'; st.className='status bad'; return; }
+      st.textContent='Дешифровано'; st.className='status good';
+      if(o.onSuccess&&o.onSuccess.event==='flag') State.emitFlag(o.side, o.onSuccess.flag, !!o.onSuccess.contest);
+      // показать координаты раскрытого объекта (storage)
+      var tgt=(GAME.objectives.filter(function(x){return x.kind==='storage';})[0]);
+      var box=card.querySelector('#ok'); box.className='';
+      if(tgt){ var cs=tgt.at[0].toFixed(6)+', '+tgt.at[1].toFixed(6);
+        box.innerHTML=readout('Пункт хранения',cs)+'<div class="actions"><a class="btn" href="https://www.google.com/maps?q='+tgt.at[0]+','+tgt.at[1]+'" target="_blank" rel="noopener">Открыть в картах</a></div>';
+        box.querySelector('.actions').prepend(copyBtn(cs)); }
+      card.querySelector('#code').classList.add('hidden'); card.querySelector('#go').classList.add('hidden');
+    }
+    card.querySelector('#go').onclick=check;
+    boxes[0].focus();
+  }
+})();
+</script>
+</body>
+</html>
