@@ -92,6 +92,7 @@
   var cfg={apiKey:"AIzaSyCPrxWyVeUpNxtul8nOUNKRjf9Uo6wH-PA",authDomain:"milsim-pages.firebaseapp.com",databaseURL:"https://milsim-pages-default-rtdb.europe-west1.firebasedatabase.app",projectId:"milsim-pages",storageBucket:"milsim-pages.firebasestorage.app",messagingSenderId:"931830776663",appId:"1:931830776663:web:78976b5c11ce30dfc73412"};
   if(!firebase.apps.length) firebase.initializeApp(cfg);
   firebase.database().ref('evac/'+SIDE).set({time:firebase.database.ServerValue.TIMESTAMP,device:dev});
+  firebase.database().ref('evac_log').push({side:SIDE,device:dev,time:firebase.database.ServerValue.TIMESTAMP});
 }catch(e){} })();
 </script>
 </body>

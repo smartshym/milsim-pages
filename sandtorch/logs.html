@@ -41,11 +41,13 @@
       <button class="tab on" data-t="cap">Захваты точек</button>
       <button class="tab" data-t="movC">Перемещения · Коалиция</button>
       <button class="tab" data-t="movI">Перемещения · Повстанцы</button>
+      <button class="tab" data-t="evac">Эвакуация</button>
     </div>
     <button id="wipe" class="danger">Очистить всю БД (тест)</button>
     <div id="cap" class="pane"></div>
     <div id="movC" class="pane hidden"></div>
     <div id="movI" class="pane hidden"></div>
+    <div id="evac" class="pane hidden"></div>
   </div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -67,7 +69,7 @@
   document.querySelectorAll('.tab').forEach(function(b){
     b.onclick=function(){
       document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('on');}); b.classList.add('on');
-      ['cap','movC','movI'].forEach(function(p){ el(p).classList.add('hidden'); });
+      ['cap','movC','movI','evac'].forEach(function(p){ el(p).classList.add('hidden'); });
       el(b.dataset.t).classList.remove('hidden');
     };
   });
@@ -109,6 +111,18 @@
     shown.forEach(function(r){ html+='<tr><td class="t">'+fmt(r.time)+'</td><td class="dev">'+r.device+'</td><td>'+r.lat.toFixed(6)+', '+r.lng.toFixed(6)+'</td></tr>'; });
     el(id).innerHTML=html+'</table>';
   }
+
+  // ----- эвакуация: история активаций (верхняя = кто захватил в итоге) -----
+  db.ref('evac_log').on('value',function(snap){
+    var o=snap.val()||{}, rows=[];
+    Object.keys(o).forEach(function(k){ var e=o[k]; if(e) rows.push(e); });
+    rows.sort(function(a,b){ return (b.time||0)-(a.time||0); });
+    var html='<div class="cnt">всего активаций: '+rows.length+(rows.length?' · захватила: '+(LABEL[rows[0].side]||'—'):'')+'</div>';
+    if(!rows.length){ el('evac').innerHTML=html+'<div class="empty">эвакуацию ещё не активировали</div>'; return; }
+    html+='<table><tr><th>Время</th><th>Сторона</th><th>Устройство</th></tr>';
+    rows.forEach(function(r,idx){ html+='<tr><td class="t">'+fmt(r.time)+'</td><td><span class="badge c-'+r.side+'">'+(LABEL[r.side]||r.side)+(idx===0?' · последний':'')+'</span></td><td class="dev">'+(r.device||'—')+'</td></tr>'; });
+    el('evac').innerHTML=html+'</table>';
+  });
 
   // очистка всей БД (для тестов) — с подтверждением
   document.getElementById('wipe').onclick=function(){
