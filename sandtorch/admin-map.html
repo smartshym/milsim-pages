@@ -74,11 +74,11 @@
   L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',{subdomains:['mt0','mt1','mt2','mt3'],maxZoom:21}).addTo(map);
   map.fitBounds(bounds); map.setMaxBounds(L.latLngBounds(bounds).pad(0.3));
   function set(id,t){ var e=document.getElementById(id); if(e) e.textContent=t; }
-  var unlocked={};
-  function accessSub(){
+  var unlocked={}, evacUnlocked={};
+  function accessSub(obj){
     var p=[];
-    if(unlocked.coalition) p.push('<span style="color:#4d9bff">Коалиция</span>');
-    if(unlocked.insurgents) p.push('<span style="color:#ff4d4d">Повстанцы</span>');
+    if(obj.coalition) p.push('<span style="color:#4d9bff">Коалиция</span>');
+    if(obj.insurgents) p.push('<span style="color:#ff4d4d">Повстанцы</span>');
     return 'доступ: '+(p.length?p.join(' · '):'—');
   }
   function namedMarker(ll,color,name,sub){
@@ -92,8 +92,8 @@
   function renderPoints(){
     ptLayer.clearLayers();
     namedMarker(PARKING,'#57c98a','Парковка').addTo(ptLayer);
-    namedMarker(L.latLng(43.802538,77.050063),'#ff9a2e','Пункт хранения',accessSub()).addTo(ptLayer);
-    namedMarker(L.latLng(43.795844,77.050030),'#ffd24d','Эвакуация',accessSub()).addTo(ptLayer);
+    namedMarker(L.latLng(43.802538,77.050063),'#ff9a2e','Пункт хранения',accessSub(unlocked)).addTo(ptLayer);
+    namedMarker(L.latLng(43.795844,77.050030),'#ffd24d','Эвакуация',accessSub(evacUnlocked)).addTo(ptLayer);
     ['coalition','insurgents'].forEach(function(s){
       var cfg=SIDES[s], a=achieved[s]||{};
       cfg.pts.forEach(function(p,i){
@@ -108,6 +108,7 @@
     db.ref('visits/'+s).on('value',function(snap){ achieved[s]=snap.val()||{}; renderPoints(); });
   });
   db.ref('unlocked').on('value',function(snap){ unlocked=snap.val()||{}; renderPoints(); });
+  db.ref('evac').on('value',function(snap){ evacUnlocked=snap.val()||{}; renderPoints(); });
 
   // ----- живые точки устройств -----
   var liveLayer=L.layerGroup().addTo(map);
