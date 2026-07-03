@@ -50,6 +50,7 @@
     <button class="pri" id="save">Сохранить в БД</button>
     <button id="seed">Пустой шаблон</button>
     <a class="lnk" id="lAdmin" target="_blank">Карта · админ</a>
+    <a class="lnk" href="logs.html" target="_blank">Логи</a>
     <label style="display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--ink)"><input type="checkbox" id="tglEnemy"> чужие взятые точки на карте стороны</label>
     <span id="msg"></span>
   </div>
@@ -93,7 +94,7 @@
   function renderTable(){
     var rows=cfg.objectives.map(function(o,i){
       var qr='';
-      if(o.onOpen){
+      if(window.SCHEMA.QR.indexOf(o.kind)>=0){   // kind со страницей → QR-ссылка (см. schema.QR)
         if(o.side==='shared') qr=Object.keys(cfg.sides).map(function(s){ return '<a class="lnk mini" target="_blank" href="point.html?id='+(o.id||'')+'&side='+s+'">QR·'+s[0]+'</a>'; }).join('');
         else qr='<a class="lnk mini" target="_blank" href="point.html?id='+(o.id||'')+'">QR</a>';
       }

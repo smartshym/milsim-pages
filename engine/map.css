@@ -28,6 +28,9 @@ body{background:var(--bg);color:var(--ink);font-family:var(--mono);overflow:hidd
 #panel #goPage:hover{background:rgba(87,201,138,.08)}
 #panel.admin .cell{display:flex;justify-content:space-between;gap:12px;margin:2px 0}
 #panel.admin h1{font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--amber-hot);margin-bottom:8px}
+#panel.admin .crm{display:block;text-align:center;text-decoration:none;border:1px solid var(--amber-hot);color:var(--amber-hot);
+  padding:8px;letter-spacing:.08em;text-transform:uppercase;font-size:11px;margin-top:10px}
+#panel.admin .crm:hover{background:rgba(255,194,77,.08)}
 
 .me{width:16px;height:16px;border-radius:50%;background:var(--amber-hot);border:2px solid #000;box-shadow:0 0 10px var(--amber-hot)}
 .pt{position:relative;display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;

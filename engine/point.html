@@ -96,6 +96,16 @@
     if(o.fragment) card.querySelector('.actions').appendChild(copyBtn(o.fragment,'Скопировать фрагмент','b-frag'));
   }
 
+  // ---- СТАРТ ----
+  else if(o.kind==='start'){
+    card.innerHTML='<div class="eyebrow"><span class="tick"></span>'+sideLabel+' · Старт<span class="rule"></span></div>'
+      +'<div class="point"><span class="lbl">Зона</span><span class="num" style="font-size:34px;letter-spacing:.05em">СТАРТ</span></div>'
+      +'<p class="lead">Точка старта вашей стороны. Отсюда выдвигаешься к первой разведточке.</p>'
+      +readout('Координаты',coordsStr)
+      +'<div class="actions">'+sideMapBtn(side)+'<a class="btn b-gmap" href="'+mapsUrl+'" target="_blank" rel="noopener">Открыть Google-карту</a></div>';
+    card.querySelector('.actions').prepend(copyBtn(coordsStr));
+  }
+
   // ---- ЭВАКУАЦИЯ ----
   else if(o.kind==='evac'){
     card.classList.add('evac');

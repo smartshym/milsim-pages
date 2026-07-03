@@ -6,7 +6,11 @@
 // ============================================================================
 window.SCHEMA = {
   // типы объектов (kind)
-  KINDS: ['checkpoint', 'terminal', 'parking', 'storage', 'evac'],
+  KINDS: ['checkpoint', 'terminal', 'parking', 'storage', 'evac', 'start'],
+
+  // kind'ы, у которых есть QR-страница (point.html) → в админке даётся QR-ссылка,
+  // на карте стороны — кнопка «открыть страницу». Не завязано на onOpen (у start события нет).
+  QR: ['checkpoint', 'terminal', 'evac', 'start'],
 
   // enum'ы правил (общие id/kind/side/lat/lng есть всегда)
   ENUMS: {
@@ -20,7 +24,8 @@ window.SCHEMA = {
     terminal:   ['n', 'code', 'reveals', 'onSuccess'],
     parking:    ['label'],
     storage:    ['label'],
-    evac:       ['label']
+    evac:       ['label'],
+    start:      ['label']
   },
 
   // дефолты reveal/onOpen по kind (подставляются в «Расширенное» при выборе типа)
@@ -29,7 +34,8 @@ window.SCHEMA = {
     terminal:   { reveal: 'captured',  onOpen: 'capture' },
     parking:    { reveal: 'always',    onOpen: 'none' },
     storage:    { reveal: 'flag-side', rvflag: 'storage', onOpen: 'none' },
-    evac:       { reveal: 'flag-side', rvflag: 'evac',    onOpen: 'flag-contest', ooflag: 'evac' }
+    evac:       { reveal: 'flag-side', rvflag: 'evac',    onOpen: 'flag-contest', ooflag: 'evac' },
+    start:      { reveal: 'always',    onOpen: 'none' }
   },
 
   // пустой ВАЛИДНЫЙ прогон — с него стартует чистый сервис, заполняется в админке.

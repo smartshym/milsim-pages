@@ -65,7 +65,11 @@ window.State = (function(){
     return state;
   }
 
-  function wipe(){ return root.remove(); }
+  function wipe(){ return root.remove(); }                 // весь прогон (включая config)
+  function resetState(){                                    // только состояние — config сохраняется
+    return Promise.all(['captures','flags','contests','live','tracks','events']
+      .map(function(k){ return root.child(k).remove(); }));
+  }
 
   // --- конфиг игры в БД (game/<run>/config): редактируется из admin.html ---
   function loadConfig(cb){ root.child('config').once('value').then(function(s){ cb(s.val()); }, function(){ cb(null); }); }
@@ -74,6 +78,6 @@ window.State = (function(){
 
   return { init:init, deviceId:deviceId, serverNow:serverNow,
            emitCapture:emitCapture, emitFlag:emitFlag, reportPosition:reportPosition,
-           subscribe:subscribe, wipe:wipe,
+           subscribe:subscribe, wipe:wipe, resetState:resetState,
            loadConfig:loadConfig, saveConfig:saveConfig, watchConfig:watchConfig };
 })();

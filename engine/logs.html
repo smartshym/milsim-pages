@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#050403">
+<meta name="robots" content="noindex,nofollow">
+<title>Логи · движок</title>
+<style>
+  :root{ --bg:#050403; --panel:#0b0907; --line:rgba(214,160,82,.18);
+    --ink:#b89a63; --ink-dim:#6f5d3c; --amber:#e3ad45; --amber-hot:#ffc24d; --green:#57c98a;
+    --mono:ui-monospace,"SF Mono","Cascadia Mono",Menlo,Consolas,monospace; }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:var(--mono);padding:24px 16px 48px;min-height:100vh}
+  .wrap{max-width:880px;margin:0 auto}
+  h1{font-size:15px;letter-spacing:.22em;text-transform:uppercase;color:var(--amber);margin-bottom:4px}
+  .sub{font-size:11px;color:var(--ink-dim);margin-bottom:16px;letter-spacing:.1em}
+  .bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
+  .lnk{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;text-decoration:none;
+    padding:8px 12px;border:1px solid var(--line);color:var(--ink)}
+  .lnk:hover{border-color:var(--amber);color:var(--amber)}
+  .danger{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;
+    padding:8px 12px;background:transparent;border:1px solid #8a3b2c;color:#c66}
+  .danger:hover{background:rgba(138,59,44,.18)}
+  #msg{font-size:11px;color:var(--green)}
+  .tabs{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+  .tab{font-family:var(--mono);font-size:12px;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;
+    padding:9px 12px;background:transparent;border:1px solid var(--line);color:var(--ink-dim)}
+  .tab.on{border-color:var(--amber-hot);color:var(--amber-hot)}
+  .pane.hidden{display:none}
+  .cnt{font-size:11px;color:var(--ink-dim);margin-bottom:8px;letter-spacing:.08em}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line)}
+  th{color:var(--ink-dim);text-transform:uppercase;letter-spacing:.1em;font-size:10px;font-weight:600}
+  td.t{color:var(--amber-hot);white-space:nowrap}
+  .badge{font-size:10px;padding:1px 6px;border:1px solid currentColor}
+  .dev{color:var(--ink-dim);word-break:break-all}
+  .empty{color:var(--ink-dim);padding:14px 4px}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Логи · <span id="run"></span></h1>
+    <div class="sub">история прогона из game/<span id="run2"></span>/</div>
+    <div class="bar">
+      <a class="lnk" id="lAdmin" target="_blank">Карта · админ</a>
+      <a class="lnk" href="admin.html">CRM</a>
+      <button class="danger" id="reset">Сбросить состояние игры (тест)</button>
+      <span id="msg"></span>
+    </div>
+    <div class="tabs">
+      <button class="tab on" data-t="events">История</button>
+      <button class="tab" data-t="caps">Захваты</button>
+      <button class="tab" data-t="mov">Перемещения</button>
+    </div>
+    <div id="events" class="pane"></div>
+    <div id="caps" class="pane hidden"></div>
+    <div id="mov" class="pane hidden"></div>
+  </div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="config.js"></script>
+<script src="schema.js"></script>
+<script src="state.js"></script>
+<script>
+(function(){
+  var SB=window.GAME; State.init(SB);
+  document.getElementById('run').textContent=SB.run;
+  document.getElementById('run2').textContent=SB.run;
+  document.getElementById('lAdmin').href='map.html?view=admin';
+
+  function el(id){ return document.getElementById(id); }
+  function fmt(t){ try{ return new Date(t).toLocaleString('ru-RU'); }catch(e){ return t; } }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c]; }); }
+
+  // табы
+  var PANES=['events','caps','mov'];
+  document.querySelectorAll('.tab').forEach(function(b){
+    b.onclick=function(){
+      document.querySelectorAll('.tab').forEach(function(x){ x.classList.remove('on'); }); b.classList.add('on');
+      PANES.forEach(function(p){ el(p).classList.add('hidden'); }); el(b.dataset.t).classList.remove('hidden');
+    };
+  });
+
+  State.loadConfig(function(db){
+    var GAME=Object.assign({}, JSON.parse(JSON.stringify(window.SCHEMA.BLANK)), SB);
+    if(db){ ['sides','shared','geo','mechanics','objectives'].forEach(function(k){ if(db[k]) GAME[k]=db[k]; }); }
+    boot(GAME);
+  });
+
+  function boot(GAME){
+    var byId={}; (GAME.objectives||[]).forEach(function(o){ byId[o.id]=o; });
+    function sideLabel(s){ return (GAME.sides[s]||{}).label || s || '—'; }
+    function sideColor(s){ return (GAME.sides[s]||{}).color || 'var(--ink)'; }
+    function objLabel(id){ var o=byId[id]; return o ? (o.label || ('точка '+(o.n!=null?o.n:o.id))) : (id||'—'); }
+    function badge(s){ return '<span class="badge" style="color:'+sideColor(s)+'">'+esc(sideLabel(s))+'</span>'; }
+    function evType(t){ if(t==='capture') return 'захват'; if(t&&t.indexOf('flag:')===0) return 'флаг · '+esc(t.slice(5)); return esc(t); }
+
+    State.subscribe(function(st){
+      renderEvents(st.events); renderCaps(st.captures); renderMov(st.tracks);
+    });
+
+    function renderEvents(ev){
+      var rows=Object.keys(ev||{}).map(function(k){ return ev[k]; }).filter(Boolean).sort(function(a,b){ return (b.time||0)-(a.time||0); });
+      var html='<div class="cnt">всего событий: '+rows.length+'</div>';
+      if(!rows.length){ el('events').innerHTML=html+'<div class="empty">событий пока нет</div>'; return; }
+      html+='<table><tr><th>Время</th><th>Событие</th><th>Объект</th><th>Сторона</th></tr>';
+      rows.forEach(function(r){ html+='<tr><td class="t">'+fmt(r.time)+'</td><td>'+evType(r.type)+'</td><td>'+esc(objLabel(r.objId))+'</td><td>'+badge(r.side)+'</td></tr>'; });
+      el('events').innerHTML=html+'</table>';
+    }
+
+    function renderCaps(cap){
+      var rows=Object.keys(cap||{}).map(function(id){ var r=cap[id]||{}; return {id:id,side:r.side,device:r.device,time:r.time||0}; })
+        .sort(function(a,b){ return b.time-a.time; });
+      var html='<div class="cnt">взято точек: '+rows.length+'</div>';
+      if(!rows.length){ el('caps').innerHTML=html+'<div class="empty">захватов пока нет</div>'; return; }
+      html+='<table><tr><th>Время</th><th>Объект</th><th>Сторона</th><th>Устройство</th></tr>';
+      rows.forEach(function(r){ html+='<tr><td class="t">'+fmt(r.time)+'</td><td>'+esc(objLabel(r.id))+'</td><td>'+badge(r.side)+'</td><td class="dev">'+esc(r.device)+'</td></tr>'; });
+      el('caps').innerHTML=html+'</table>';
+    }
+
+    function renderMov(tr){
+      var rows=[]; Object.keys(tr||{}).forEach(function(dev){ var pts=tr[dev]||{};
+        Object.keys(pts).forEach(function(k){ var e=pts[k]; if(!e||e.lat==null) return; rows.push({device:dev,side:e.side,lat:e.lat,lng:e.lng,time:e.time||0}); }); });
+      rows.sort(function(a,b){ return b.time-a.time; });
+      var total=rows.length, shown=rows.slice(0,400);
+      var html='<div class="cnt">точек трека: '+total+(total>400?' (последние 400)':'')+'</div>';
+      if(!total){ el('mov').innerHTML=html+'<div class="empty">перемещений пока нет</div>'; return; }
+      html+='<table><tr><th>Время</th><th>Сторона</th><th>Устройство</th><th>Координаты</th></tr>';
+      shown.forEach(function(r){ html+='<tr><td class="t">'+fmt(r.time)+'</td><td>'+badge(r.side)+'</td><td class="dev">'+esc(r.device)+'</td><td>'+r.lat.toFixed(6)+', '+r.lng.toFixed(6)+'</td></tr>'; });
+      el('mov').innerHTML=html+'</table>';
+    }
+  }
+
+  // сброс СОСТОЯНИЯ (config сохраняется) — для тестов
+  el('reset').onclick=function(){
+    if(!confirm('Сбросить состояние игры — захваты, флаги, события, треки, позиции?\nКонфиг (точки/стороны) сохранится. Действие безвозвратно.')) return;
+    State.resetState().then(function(){ el('msg').textContent='состояние сброшено ✓'; setTimeout(function(){ el('msg').textContent=''; },3000); },
+      function(e){ alert('Ошибка: '+e.message); });
+  };
+})();
+</script>
+</body>
+</html>

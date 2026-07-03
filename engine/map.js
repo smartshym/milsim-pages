@@ -52,7 +52,9 @@
       panel.innerHTML='<h1>Админ · '+GAME.run+'</h1>'
         +'<div class="cell"><span class="k">Устройств онлайн</span><span class="v" id="dev">0</span></div>'
         +'<div class="cell"><span class="k">До точки</span><span class="v" id="dist">—</span></div>'
-        +'<div class="cell"><span class="k">Направление</span><span class="v" id="brg">—</span></div>';
+        +'<div class="cell"><span class="k">Направление</span><span class="v" id="brg">—</span></div>'
+        +'<a class="crm" href="admin.html">Открыть CRM →</a>'
+        +'<a class="crm" href="logs.html">Логи →</a>';
     } else {
       panel.innerHTML='<div><div class="k">Сторона</div><div class="v">'+GAME.sides[VIEW].label+'</div></div>'
         +'<div><div class="k">Точность</div><div class="v" id="acc">—</div></div>'
@@ -93,7 +95,7 @@
     function bindSel(m,ll,obj){ m.on('click',function(e){ L.DomEvent.stopPropagation(e); select(ll,obj); }); return m; }
     function updateGoPage(obj){
       var g=document.getElementById('goPage'); if(!g) return;                 // есть только на карте стороны
-      if(obj && obj.onOpen && (obj.side===VIEW || obj.side==='shared')){   // только свои точки (+ общие) — не раскрывать чужие
+      if(obj && window.SCHEMA.QR.indexOf(obj.kind)>=0 && (obj.side===VIEW || obj.side==='shared')){   // только свои точки со страницей (+ общие)
         g.href='point.html?id='+obj.id+(obj.side==='shared'?'&side='+VIEW:'');
         g.textContent='Открыть: '+(obj.label||('точка '+(obj.n!=null?obj.n:obj.id)))+' →';
         g.style.display='block';
