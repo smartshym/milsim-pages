@@ -71,6 +71,7 @@
   if(!o){ card.innerHTML='<div class="lead">Неизвестная точка.</div>'; return; }
   var side = (o.side!=='shared') ? o.side : sideParam;
   var sideLabel = (GAME.sides[side]||{}).label || '';
+  var sideColor = (GAME.sides[side]||{}).color || 'var(--rust)';
   var coordsStr = o.at[0].toFixed(6)+', '+o.at[1].toFixed(6);
   var mapsUrl = 'https://www.google.com/maps?q='+o.at[0]+','+o.at[1];
 
@@ -98,7 +99,7 @@
 
   // ---- СТАРТ ----
   else if(o.kind==='start'){
-    card.innerHTML='<div class="eyebrow"><span class="tick"></span>'+sideLabel+' · Старт<span class="rule"></span></div>'
+    card.innerHTML='<div class="eyebrow"><span class="tick" style="background:'+sideColor+'"></span>'+sideLabel+' · Старт<span class="rule"></span></div>'
       +'<div class="point"><span class="lbl">Зона</span><span class="num" style="font-size:34px;letter-spacing:.05em">СТАРТ</span></div>'
       +'<p class="lead">Точка старта вашей стороны. Отсюда выдвигаешься к первой разведточке.</p>'
       +readout('Координаты',coordsStr)
