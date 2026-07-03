@@ -40,6 +40,10 @@
     background:rgba(0,0,0,.35);border:1px solid var(--line);padding:13px 4px;width:100%;outline:none}
   .status{min-height:16px;margin-top:12px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-dim)}
   .status.bad{color:var(--rust)} .status.good{color:var(--green)}
+  .btn.b-copy{border-left:3px solid rgba(227,173,69,.55)}
+  .btn.b-map{border-left:3px solid rgba(120,160,255,.5)}
+  .btn.b-gmap{border-left:3px solid rgba(87,201,138,.5)}
+  .btn.b-frag{border-left:3px solid rgba(255,150,60,.55)}
   .hidden{display:none}
 </style>
 </head>
@@ -68,9 +72,10 @@
   var coordsStr = o.at[0].toFixed(6)+', '+o.at[1].toFixed(6);
   var mapsUrl = 'https://www.google.com/maps?q='+o.at[0]+','+o.at[1];
 
-  function copyBtn(text,label){ var b=document.createElement('button'); b.className='btn'; b.textContent=label||'Скопировать координаты';
+  function copyBtn(text,label,cls){ var b=document.createElement('button'); b.className='btn '+(cls||'b-copy'); b.textContent=label||'Скопировать координаты';
     b.onclick=function(){ (navigator.clipboard?navigator.clipboard.writeText(text):Promise.reject()).then(ok,ok); function ok(){ b.classList.add('ok'); b.textContent='Скопировано ✓'; } }; return b; }
   function readout(head,val,cls){ return '<div class="readout"><div class="head">'+head+'</div><div class="coords '+(cls||'')+'">'+val+'</div></div>'; }
+  function sideMapBtn(sd){ if(!sd || !GAME.sides[sd]) return ''; return '<a class="btn b-map" href="map.html?view='+sd+'">Карта стороны</a>'; }
 
   // ---- emit события открытия ----
   if(o.onOpen){
@@ -84,9 +89,9 @@
     card.innerHTML='<div class="eyebrow"><span class="tick"></span>'+sideLabel+' · Разведточка<span class="rule"></span></div>'
       +'<div class="point"><span class="lbl">Точка</span><span class="num">'+o.n+'</span></div>'
       +readout('Координаты',coordsStr)+fragBlock
-      +'<div class="actions"><a class="btn" href="'+mapsUrl+'" target="_blank" rel="noopener">Открыть в картах</a></div>';
+      +'<div class="actions">'+sideMapBtn(side)+'<a class="btn b-gmap" href="'+mapsUrl+'" target="_blank" rel="noopener">Открыть Google-карту</a></div>';
     card.querySelector('.actions').prepend(copyBtn(coordsStr));
-    if(o.fragment) card.querySelector('.actions').appendChild(copyBtn(o.fragment,'Скопировать фрагмент'));
+    if(o.fragment) card.querySelector('.actions').appendChild(copyBtn(o.fragment,'Скопировать фрагмент','b-frag'));
   }
 
   // ---- ЭВАКУАЦИЯ ----
@@ -97,7 +102,7 @@
       +'<div class="point"><span class="lbl">Зона</span><span class="num">EVAC</span></div>'
       +'<p class="lead">«Шихаб» активирован — борт на подходе. Выходи к зоне и держи периметр.</p>'
       +readout('Координаты эвакуации',coordsStr)
-      +'<div class="actions"><a class="btn" href="'+mapsUrl+'" target="_blank" rel="noopener">Открыть в картах</a></div>';
+      +'<div class="actions">'+sideMapBtn(side)+'<a class="btn b-gmap" href="'+mapsUrl+'" target="_blank" rel="noopener">Открыть Google-карту</a></div>';
     card.querySelector('.actions').prepend(copyBtn(coordsStr));
   }
 
@@ -123,7 +128,7 @@
       var tgt=(o.reveals ? GAME.objectives.filter(function(x){return x.id===o.reveals;})[0] : GAME.objectives.filter(function(x){return x.kind==='storage';})[0]);
       var box=card.querySelector('#ok'); box.className='';
       if(tgt){ var cs=tgt.at[0].toFixed(6)+', '+tgt.at[1].toFixed(6);
-        box.innerHTML=readout('Пункт хранения',cs)+'<div class="actions"><a class="btn" href="https://www.google.com/maps?q='+tgt.at[0]+','+tgt.at[1]+'" target="_blank" rel="noopener">Открыть в картах</a></div>';
+        box.innerHTML=readout('Пункт хранения',cs)+'<div class="actions">'+sideMapBtn(side)+'<a class="btn b-gmap" href="https://www.google.com/maps?q='+tgt.at[0]+','+tgt.at[1]+'" target="_blank" rel="noopener">Открыть Google-карту</a></div>';
         box.querySelector('.actions').prepend(copyBtn(cs)); }
       card.querySelector('#code').classList.add('hidden'); card.querySelector('#go').classList.add('hidden');
     }
