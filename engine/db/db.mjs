@@ -1,0 +1,72 @@
+// ============================================================================
+//  db.mjs — экспорт/импорт Firebase RTDB через REST (test-mode: без токена).
+//  Запуск (из папки engine/db):
+//    node db.mjs pull [node=config] [file]    # БД  → dumps/<node>.json
+//    node db.mjs push [node=config] [file]     # dumps/<node>.json → БД (PUT — замена узла)
+//    node db.mjs backup [метка]                # ВЕСЬ прогон → dumps/backups/<метка>-<время>.json
+//    node db.mjs restore <файл>                # ВЕСЬ прогон ← файл (PUT — замена состояния)
+//    node — подпуть под game/<run>. '.' = весь прогон. Примеры: config | . | flags
+//
+//  Миграция (безопасно, с бэкапом):
+//    node db.mjs pull config            # выгрузить конфиг
+//    node migrations/<миграция>.mjs     # преобразовать dumps/config.json
+//    node db.mjs push config            # залить обратно
+//  Снять/вернуть состояние прогона (config + captures + events + …):
+//    node db.mjs backup preigra         # снимок перед игрой
+//    node db.mjs restore dumps/backups/preigra-2026-07-03T....json
+//  ⚠️ Когда закроем Firebase правилами — REST-запись потребует токен (сейчас открыто).
+// ============================================================================
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const BASE = 'https://milsim-pages-default-rtdb.europe-west1.firebasedatabase.app';
+const RUN  = 'sandtorch';
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const DUMPS = path.join(HERE, 'dumps');
+const BACKUPS = path.join(DUMPS, 'backups');
+
+function loc(node){ const sub = (node === '.' || node === '') ? '' : '/' + node;
+  return { url: `${BASE}/game/${RUN}${sub}.json`, label: `game/${RUN}${sub}` }; }
+function rel(p){ return path.relative(process.cwd(), p) || p; }
+
+async function pull(node, outfile){
+  const { url, label } = loc(node);
+  const r = await fetch(url);
+  if (!r.ok) throw new Error('pull failed ' + r.status);
+  const data = await r.json();
+  fs.mkdirSync(path.dirname(outfile), { recursive: true });
+  fs.writeFileSync(outfile, JSON.stringify(data, null, 2));
+  console.log('pulled  %s  →  %s', label, rel(outfile));
+}
+async function push(node, infile){
+  const { url, label } = loc(node);
+  const body = fs.readFileSync(infile, 'utf8');
+  JSON.parse(body); // валидация JSON перед заливкой
+  const r = await fetch(url, { method: 'PUT', body, headers: { 'Content-Type': 'application/json' } });
+  if (!r.ok) throw new Error('push failed ' + r.status + ' ' + await r.text());
+  console.log('pushed  %s  →  %s  (%s)', rel(infile), label, r.status);
+}
+
+const [cmd, a1, a2] = process.argv.slice(2);
+const dumpName = (node) => (node === '.' || node === '' ? 'run' : node.replace(/\//g, '_')) + '.json';
+
+if (cmd === 'pull') {
+  const node = a1 || 'config';
+  await pull(node, a2 || path.join(DUMPS, dumpName(node)));
+} else if (cmd === 'push') {
+  const node = a1 || 'config';
+  await push(node, a2 || path.join(DUMPS, dumpName(node)));
+} else if (cmd === 'backup') {
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);   // 2026-07-03T21-40-05
+  const fileName = (a1 ? a1 + '-' : '') + stamp + '.json';
+  await pull('.', path.join(BACKUPS, fileName));
+} else if (cmd === 'restore') {
+  if (!a1) throw new Error('restore: укажи файл бэкапа, напр. dumps/backups/<...>.json');
+  await push('.', path.isAbsolute(a1) ? a1 : path.resolve(process.cwd(), a1));
+} else {
+  console.log('usage:\n'
+    + '  node db.mjs pull|push [node=config] [file]   (node: config | . | flags | …)\n'
+    + '  node db.mjs backup [метка]                   # весь прогон → dumps/backups/\n'
+    + '  node db.mjs restore <файл>                   # весь прогон ← файл (замена)');
+}

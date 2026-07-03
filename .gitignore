@@ -2,3 +2,7 @@
 /*
 !/.gitignore
 !/engine/
+
+# Дампы БД и сиды — локальные (сид содержит коды-спойлеры). Скрипты в engine/db/ остаются.
+engine/db/dumps/
+engine/db/seeds/
