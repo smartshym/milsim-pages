@@ -57,7 +57,7 @@
 <script>
 (function(){
   var SB=window.GAME, card=document.getElementById('card');
-  var id=(location.search.match(/id=([a-z0-9]+)/i)||[])[1];
+  var id=(location.search.match(/id=([a-z0-9_-]+)/i)||[])[1];   // id может содержать дефис (напр. start-coalition)
   var sideParam=(location.search.match(/side=([a-z]+)/)||[])[1];
   State.init(SB);
   State.loadConfig(function(db){
