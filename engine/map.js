@@ -127,7 +127,7 @@
             bindSel(named(at,color,o.label||o.id,sub),at,o).addTo(objLayer); }
         } else {
           if(!revealed(o,st)) return;
-          if(!showEnemy && o.side!=='shared' && o.side!==VIEW) return;   // скрыть чужие взятые точки (тумблер выключен)
+          if(o.side!=='shared' && o.side!==VIEW && !(showEnemy && captured)) return;   // чужие точки — только ВЗЯТЫЕ и только при включённом тумблере (старт/невзятые стороне противника не видны)
           if(numbered){ bindSel(L.marker(at,{icon:ptIcon(color,o.n+(captured?'<span class="chk">✓</span>':''),'')}),at,o).addTo(objLayer); }
           else { bindSel(named(at,color,o.label||o.id,null),at,o).addTo(objLayer); }
         }
