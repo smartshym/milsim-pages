@@ -33,6 +33,9 @@
   .form input,.form select{width:100%;font-family:var(--mono);font-size:12px;color:var(--amber-hot);
     background:rgba(0,0,0,.35);border:1px solid var(--line);padding:8px;outline:none}
   .form .full{grid-column:1/-1}
+  .form details.advbox{grid-column:1/-1;border-top:1px solid var(--line);padding-top:8px}
+  .form details.advbox summary{cursor:pointer;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-dim);margin-bottom:8px}
+  .form details.advbox .advgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
   textarea{width:100%;min-height:120px;font-family:var(--mono);font-size:12px;color:var(--amber-hot);
     background:rgba(0,0,0,.35);border:1px solid var(--line);padding:10px;outline:none}
   .c-coalition{color:#4d9bff}.c-insurgents{color:#ff4d4d}.c-shared{color:var(--green)}
@@ -45,8 +48,9 @@
 
   <div class="bar">
     <button class="pri" id="save">Сохранить в БД</button>
-    <button id="seed">Загрузить дефолт</button>
+    <button id="seed">Пустой шаблон</button>
     <a class="lnk" id="lAdmin" target="_blank">Карта · админ</a>
+    <label style="display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--ink)"><input type="checkbox" id="tglEnemy"> чужие взятые точки на карте стороны</label>
     <span id="msg"></span>
   </div>
 
@@ -62,6 +66,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <script src="config.js"></script>
+<script src="schema.js"></script>
 <script src="state.js"></script>
 <script>
 (function(){
@@ -69,14 +74,17 @@
   document.getElementById('run').textContent=SB.run;
   document.getElementById('lAdmin').href='map.html?view=admin';
 
-  function defCfg(){ return JSON.parse(JSON.stringify({sides:SB.sides, shared:SB.shared, geo:SB.geo, mechanics:SB.mechanics, objectives:SB.objectives})); }
+  function defCfg(){ return JSON.parse(JSON.stringify(window.SCHEMA.BLANK)); }   // «Загрузить дефолт» = пустой шаблон нового прогона
   var cfg=null, editIdx=null;
   function el(id){ return document.getElementById(id); }
   function msg(t){ el('msg').textContent=t; setTimeout(function(){ el('msg').textContent=''; },2500); }
 
   State.loadConfig(function(db){ cfg = db || defCfg(); if(!cfg.objectives) cfg.objectives=[]; renderAll(); });
 
-  function renderAll(){ renderTable(); renderMeta(); }
+  function renderAll(){ renderTable(); renderMeta(); syncToggles(); }
+  function syncToggles(){ var t=el('tglEnemy'); if(!t) return;
+    t.checked = !(cfg.mechanics && cfg.mechanics.showEnemyCaptures===false);
+    t.onchange=function(){ cfg.mechanics=cfg.mechanics||{}; cfg.mechanics.showEnemyCaptures=t.checked; renderMeta(); }; }
   function renderMeta(){ el('meta').value=JSON.stringify({sides:cfg.sides,shared:cfg.shared,geo:cfg.geo,mechanics:cfg.mechanics}, null, 2); }
 
   function revealStr(o){ var r=o.reveal||'always'; if(typeof r==='string') return r; return (r.flag||'?')+'/'+(r.scope||'any'); }
@@ -103,40 +111,68 @@
   function sideOpts(sel){ var ks=Object.keys(cfg.sides).concat(['shared']); return ks.map(function(s){ return '<option '+(s===sel?'selected':'')+'>'+s+'</option>'; }).join(''); }
   function opt(list,sel){ return list.map(function(s){ return '<option '+(s===sel?'selected':'')+'>'+s+'</option>'; }).join(''); }
 
-  function openForm(idx){
-    editIdx=idx;
-    var o = idx===null ? {kind:'recon',side:'coalition',reveal:'captured',onOpen:{event:'capture'},at:[43.80,77.05]} : cfg.objectives[idx];
-    var rv = (typeof (o.reveal||'always')==='string') ? (o.reveal||'always') : (o.reveal.scope==='side'?'flag-side':'flag-any');
-    var rvFlag = (o.reveal&&o.reveal.flag)||'';
-    var oo = !o.onOpen ? 'none' : (o.onOpen.event==='capture'?'capture':(o.onOpen.contest?'flag-contest':'flag'));
-    var ooFlag = (o.onOpen&&o.onOpen.flag)||'';
-    var f=el('form'); f.style.display='grid'; f.className='form';
-    f.innerHTML=''
-      +'<div><label>id</label><input id="f_id" value="'+(o.id||'')+'"></div>'
-      +'<div><label>kind</label><select id="f_kind">'+opt(['recon','terminal','parking','storage','evac'],o.kind)+'</select></div>'
-      +'<div><label>side</label><select id="f_side">'+sideOpts(o.side)+'</select></div>'
-      +'<div><label>n (номер)</label><input id="f_n" value="'+(o.n!=null?o.n:'')+'"></div>'
-      +'<div><label>lat</label><input id="f_lat" value="'+(o.at?o.at[0]:'')+'"></div>'
-      +'<div><label>lng</label><input id="f_lng" value="'+(o.at?o.at[1]:'')+'"></div>'
-      +'<div><label>label</label><input id="f_label" value="'+(o.label||'')+'"></div>'
-      +'<div><label>fragment (код точки)</label><input id="f_frag" value="'+(o.fragment||'')+'"></div>'
-      +'<div><label>ложная (decoy)</label><select id="f_decoy"><option value="">нет</option><option value="1" '+(o.decoy?'selected':'')+'>да</option></select></div>'
-      +'<div><label>reveal</label><select id="f_rv">'+opt(['always','captured','flag-side','flag-any'],rv)+'</select></div>'
-      +'<div><label>reveal flag</label><input id="f_rvflag" value="'+rvFlag+'"></div>'
-      +'<div><label>onOpen</label><select id="f_oo">'+opt(['none','capture','flag','flag-contest'],oo)+'</select></div>'
-      +'<div><label>onOpen flag</label><input id="f_ooflag" value="'+ooFlag+'"></div>'
-      +'<div><label>onSuccess flag (терминал)</label><input id="f_sf" value="'+((o.onSuccess&&o.onSuccess.flag)||'')+'"></div>'
-      +'<div><label>reveals — id объекта (терминал)</label><input id="f_reveals" value="'+(o.reveals||'')+'"></div>'
-      +'<div class="full"><label>code (терминал, через запятую)</label><input id="f_code" value="'+((o.code||[]).join(','))+'"></div>'
-      +'<div class="full"><button class="pri" id="f_save">Применить</button> <button id="f_cancel">Отмена</button></div>';
+  function has(id){ return !!el(id); }
+  function fld(lbl,inner){ return '<div><label>'+lbl+'</label>'+inner+'</div>'; }
+  function kindDefaults(k){ return window.SCHEMA.DEFAULTS[k] || {reveal:'always',onOpen:'none'}; }
+
+  // рендер одного поля по имени (id полей неизменны → currentForm() их читает по наличию)
+  function fieldHtml(fn,o){ switch(fn){
+    case 'n':         return fld('n (номер)','<input id="f_n" value="'+(o.n!=null?o.n:'')+'">');
+    case 'label':     return fld('label','<input id="f_label" value="'+(o.label||'')+'">');
+    case 'fragment':  return fld('fragment (код точки)','<input id="f_frag" value="'+(o.fragment||'')+'">');
+    case 'decoy':     return fld('ложная (decoy)','<select id="f_decoy"><option value="">нет</option><option value="1" '+(o.decoy?'selected':'')+'>да</option></select>');
+    case 'code':      return fld('code (через запятую)','<input id="f_code" value="'+((o.code||[]).join(','))+'">');
+    case 'reveals':   return fld('reveals — id объекта','<input id="f_reveals" value="'+(o.reveals||'')+'">');
+    case 'onSuccess': return fld('onSuccess flag','<input id="f_sf" value="'+((o.onSuccess&&o.onSuccess.flag)||'')+'">');
+    default: return '';
+  } }
+
+  function openForm(idx){ editIdx=idx;
+    var g=cfg.geo||{}, def={ kind:window.SCHEMA.KINDS[0], side:Object.keys(cfg.sides||{})[0]||'shared',
+      at:[(g.north+g.south)/2||43.80, (g.east+g.west)/2||77.05] };
+    renderForm(idx===null ? def : cfg.objectives[idx], false); }
+
+  // читает текущие введённые поля (какие есть для выбранного kind)
+  function currentForm(){
+    var o={ id:val('f_id'), kind:val('f_kind'), side:val('f_side'), at:[parseFloat(val('f_lat')),parseFloat(val('f_lng'))] };
+    if(has('f_n') && val('f_n')!=='') o.n=parseInt(val('f_n'),10);
+    if(val('f_label')) o.label=val('f_label');
+    if(val('f_frag')) o.fragment=val('f_frag');
+    if(has('f_decoy') && el('f_decoy').value) o.decoy=true;
+    if(val('f_reveals')) o.reveals=val('f_reveals');
+    if(val('f_sf')) o.onSuccess={event:'flag',flag:val('f_sf')};
+    if(val('f_code')) o.code=val('f_code').split(',').map(function(s){return s.trim().toUpperCase();});
+    return o;
+  }
+
+  // форма по kind: общие + релевантные типу + «Расширенное» (reveal/onOpen, дефолт из kind)
+  function renderForm(o, freshAdv){
+    var k=o.kind||'checkpoint', kd=kindDefaults(k), rv,rvFlag,oo,ooFlag;
+    if(!freshAdv && o.reveal!==undefined){ rv=typeof o.reveal==='string'?o.reveal:(o.reveal.scope==='side'?'flag-side':'flag-any'); rvFlag=(o.reveal&&o.reveal.flag)||''; }
+    else { rv=kd.reveal; rvFlag=kd.rvflag||''; }
+    if(!freshAdv && o.onOpen!==undefined){ oo=!o.onOpen?'none':(o.onOpen.event==='capture'?'capture':(o.onOpen.contest?'flag-contest':'flag')); ooFlag=(o.onOpen&&o.onOpen.flag)||''; }
+    else { oo=kd.onOpen; ooFlag=kd.ooflag||''; }
+    var h=fld('id','<input id="f_id" value="'+(o.id||'')+'">')
+      +'<div><label>kind</label><select id="f_kind">'+opt(window.SCHEMA.KINDS,k)+'</select></div>'
+      +fld('side','<select id="f_side">'+sideOpts(o.side)+'</select>')
+      +fld('lat','<input id="f_lat" value="'+(o.at?o.at[0]:'')+'">')
+      +fld('lng','<input id="f_lng" value="'+(o.at?o.at[1]:'')+'">');
+    (window.SCHEMA.FIELDS[k]||[]).forEach(function(fn){ h+=fieldHtml(fn,o); });   // поля под kind — из schema.FIELDS
+    h+='<details class="full advbox"><summary>Расширенное · reveal / onOpen (по умолчанию из kind)</summary><div class="advgrid">'
+      +fld('reveal','<select id="f_rv">'+opt(window.SCHEMA.ENUMS.reveal,rv)+'</select>')
+      +fld('reveal flag','<input id="f_rvflag" value="'+rvFlag+'">')
+      +fld('onOpen','<select id="f_oo">'+opt(window.SCHEMA.ENUMS.onOpen,oo)+'</select>')
+      +fld('onOpen flag','<input id="f_ooflag" value="'+ooFlag+'">')
+      +'</div></details>'
+      +'<div class="full" style="margin-top:8px"><button class="pri" id="f_save">Применить</button> <button id="f_cancel">Отмена</button></div>';
+    var f=el('form'); f.style.display='grid'; f.className='form'; f.innerHTML=h;
+    el('f_kind').onchange=function(){ renderForm(currentForm(), true); };   // смена kind → поля по типу + дефолты reveal/onOpen
     el('f_save').onclick=saveForm; el('f_cancel').onclick=function(){ f.style.display='none'; };
   }
 
-  function val(id){ return el(id).value.trim(); }
+  function val(id){ var e=el(id); return e?e.value.trim():''; }
   function saveForm(){
-    var o={ id:val('f_id'), kind:val('f_kind'), side:val('f_side'), at:[parseFloat(val('f_lat')),parseFloat(val('f_lng'))] };
-    if(val('f_n')!=='') o.n=parseInt(val('f_n'),10);
-    if(val('f_label')) o.label=val('f_label');
+    var o=currentForm();
     var rv=val('f_rv'), rvf=val('f_rvflag');
     if((rv==='flag-side'||rv==='flag-any') && !rvf){ alert('Для reveal=flag-* укажи имя флага'); return; }
     o.reveal = rv==='flag-side'?{flag:rvf,scope:'side'} : rv==='flag-any'?{flag:rvf,scope:'any'} : rv;
@@ -145,18 +181,13 @@
     if(oo==='capture') o.onOpen={event:'capture'};
     else if(oo==='flag') o.onOpen={event:'flag',flag:oof};
     else if(oo==='flag-contest') o.onOpen={event:'flag',flag:oof,contest:true};
-    if(val('f_frag')) o.fragment=val('f_frag');
-    if(el('f_decoy').value) o.decoy=true;
-    if(val('f_reveals')) o.reveals=val('f_reveals');
-    if(val('f_sf')) o.onSuccess={event:'flag',flag:val('f_sf')};
-    if(val('f_code')) o.code=val('f_code').split(',').map(function(s){return s.trim().toUpperCase();});
     if(!o.id){ alert('Нужен id'); return; }
     if(editIdx===null) cfg.objectives.push(o); else cfg.objectives[editIdx]=o;
     el('form').style.display='none'; renderTable();
   }
 
   el('add').onclick=function(){ openForm(null); };
-  el('seed').onclick=function(){ if(confirm('Заменить текущий конфиг дефолтным?')){ cfg=defCfg(); renderAll(); } };
+  el('seed').onclick=function(){ if(confirm('Сбросить конфиг до пустого шаблона (новый прогон)?')){ cfg=defCfg(); renderAll(); } };
   el('save').onclick=function(){
     try{ var m=JSON.parse(el('meta').value); cfg.sides=m.sides; cfg.shared=m.shared; cfg.geo=m.geo; cfg.mechanics=m.mechanics; }
     catch(e){ alert('Мета-JSON не парсится: '+e.message); return; }

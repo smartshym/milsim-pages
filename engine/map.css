@@ -23,6 +23,9 @@ body{background:var(--bg);color:var(--ink);font-family:var(--mono);overflow:hidd
 #panel .k{color:var(--ink-dim);text-transform:uppercase;letter-spacing:.12em;font-size:10px}
 #panel .v{color:var(--amber-hot);font-weight:600}
 #panel .full{grid-column:1/-1}
+#panel #goPage{display:block;text-align:center;text-decoration:none;border:1px solid var(--green);color:var(--green);
+  padding:9px;letter-spacing:.06em;text-transform:uppercase;font-size:11px;margin-top:2px}
+#panel #goPage:hover{background:rgba(87,201,138,.08)}
 #panel.admin .cell{display:flex;justify-content:space-between;gap:12px;margin:2px 0}
 #panel.admin h1{font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--amber-hot);margin-bottom:8px}
 

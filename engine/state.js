@@ -33,7 +33,7 @@ window.State = (function(){
     root.child('events').push({ type:type, objId:objId||null, side:side||null, device:dev, time:TS() });
   }
 
-  // точку фиксирует ПЕРВЫЙ открывший (recon/terminal)
+  // точку фиксирует ПЕРВЫЙ открывший (checkpoint/terminal)
   function emitCapture(objId, side){
     root.child('captures/' + objId).transaction(function(cur){
       return cur ? undefined : { side:side, device:dev, time:Date.now() };

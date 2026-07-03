@@ -1,15 +1,16 @@
 // ============================================================================
 //  MAP — рендерер. ?view=coalition|insurgents|admin.
-//  Конфиг берёт ИЗ БД (game/<run>/config), редактируется в admin.html.
-//  Если в БД пусто — фолбэк на дефолт из config.js.
+//  Игру берёт ИЗ БД (game/<run>/config), правится в admin.html.
+//  Пустая БД → пустой шаблон (schema.BLANK): пустая карта, не краш.
 // ============================================================================
 (function(){
-  var SB = window.GAME;                       // config.js = соединение + дефолтный конфиг
+  var SB = window.GAME;                       // config.js = только firebase + run
   var VIEW = (location.search.match(/view=([a-z]+)/) || [])[1];
 
   State.init(SB);
   State.loadConfig(function(db){
-    var GAME = Object.assign({}, SB);
+    // база = firebase/run (config.js) ⊕ пустой валидный шаблон (schema.BLANK); БД перекрывает игровые ключи
+    var GAME = Object.assign({}, JSON.parse(JSON.stringify(window.SCHEMA.BLANK)), SB);
     if(db){ ['sides','shared','geo','mechanics','objectives'].forEach(function(k){ if(db[k]) GAME[k]=db[k]; }); }
     var isAdmin = VIEW==='admin', isSide = !!(GAME.sides[VIEW]);
     if(!isAdmin && !isSide){
@@ -24,6 +25,7 @@
 
   function boot(GAME, VIEW, isAdmin, isSide){
     var KIND = { parking:'#57c98a', storage:'#ff9a2e', evac:'#ffd24d' };
+    var showEnemy = GAME.mechanics.showEnemyCaptures !== false;   // тумблер CRM: чужие взятые точки на карте стороны
     function objColor(o){ return o.side !== 'shared' ? GAME.sides[o.side].color : (KIND[o.kind] || '#888'); }
     function set(id,t){ var e=document.getElementById(id); if(e) e.textContent=t; }
     function mmss(s){ s=Math.max(0,Math.floor(s)); var m=Math.floor(s/60),ss=s%60; return (m<10?'0':'')+m+':'+(ss<10?'0':'')+ss; }
@@ -56,7 +58,8 @@
         +'<div><div class="k">Точность</div><div class="v" id="acc">—</div></div>'
         +'<div><div class="k">До точки</div><div class="v" id="dist">—</div></div>'
         +'<div><div class="k">Направление</div><div class="v" id="brg">—</div></div>'
-        +'<div class="full"><div class="k">Статус</div><div class="v" id="status">ожидание GPS…</div></div>';
+        +'<div class="full"><div class="k">Статус</div><div class="v" id="status">ожидание GPS…</div></div>'
+        +'<div class="full"><a id="goPage" href="#" style="display:none">Открыть страницу точки →</a></div>';
     }
 
     function ptIcon(color,inner,cls){ return L.divIcon({className:'',iconSize:[22,22],iconAnchor:[11,11],
@@ -86,8 +89,16 @@
       var y=Math.sin(dL)*Math.cos(la2),x=Math.cos(la1)*Math.sin(la2)-Math.sin(la1)*Math.cos(la2)*Math.cos(dL);
       return (Math.atan2(y,x)*180/Math.PI+360)%360; }
     function bearingStr(a,c){ var d=bearing(a,c),dirs=['С','СВ','В','ЮВ','Ю','ЮЗ','З','СЗ']; return dirs[Math.round(d/45)%8]+' '+Math.round(d)+'°'; }
-    function select(ll){ selected=ll; updateLine(); }
-    function bindSel(m,ll){ m.on('click',function(e){ L.DomEvent.stopPropagation(e); select(ll); }); return m; }
+    function select(ll,obj){ selected=ll; updateLine(); updateGoPage(obj); }
+    function bindSel(m,ll,obj){ m.on('click',function(e){ L.DomEvent.stopPropagation(e); select(ll,obj); }); return m; }
+    function updateGoPage(obj){
+      var g=document.getElementById('goPage'); if(!g) return;                 // есть только на карте стороны
+      if(obj && obj.onOpen && (obj.side===VIEW || obj.side==='shared')){   // только свои точки (+ общие) — не раскрывать чужие
+        g.href='point.html?id='+obj.id+(obj.side==='shared'?'&side='+VIEW:'');
+        g.textContent='Открыть: '+(obj.label||('точка '+(obj.n!=null?obj.n:obj.id)))+' →';
+        g.style.display='block';
+      } else { g.style.display='none'; }
+    }
     function updateLine(){
       if(!selected) return;
       if(last){ var d=map.distance(last,selected);
@@ -106,22 +117,23 @@
       objLayer.clearLayers();
       GAME.objectives.forEach(function(o){
         var at=L.latLng(o.at[0],o.at[1]), color=objColor(o), captured=!!st.captures[o.id];
-        var numbered=(o.kind==='recon'||o.kind==='terminal');
+        var numbered=(o.kind==='checkpoint'||o.kind==='terminal');
         if(isAdmin){
           if(numbered){ var inner=o.n+(captured?'<span class="chk">✓</span>':'');
-            bindSel(L.marker(at,{icon:ptIcon(color,inner,captured?'':'todo')}),at).addTo(objLayer);
+            bindSel(L.marker(at,{icon:ptIcon(color,inner,captured?'':'todo')}),at,o).addTo(objLayer);
           } else { var sub=(o.reveal&&o.reveal.flag)?accessSub(o.reveal.flag,st):null;
-            bindSel(named(at,color,o.label||o.id,sub),at).addTo(objLayer); }
+            bindSel(named(at,color,o.label||o.id,sub),at,o).addTo(objLayer); }
         } else {
           if(!revealed(o,st)) return;
-          if(numbered){ bindSel(L.marker(at,{icon:ptIcon(color,o.n+(captured?'<span class="chk">✓</span>':''),'')}),at).addTo(objLayer); }
-          else { bindSel(named(at,color,o.label||o.id,null),at).addTo(objLayer); }
+          if(!showEnemy && o.side!=='shared' && o.side!==VIEW) return;   // скрыть чужие взятые точки (тумблер выключен)
+          if(numbered){ bindSel(L.marker(at,{icon:ptIcon(color,o.n+(captured?'<span class="chk">✓</span>':''),'')}),at,o).addTo(objLayer); }
+          else { bindSel(named(at,color,o.label||o.id,null),at,o).addTo(objLayer); }
         }
       });
       if(isSide){
-        var mine=GAME.objectives.filter(function(o){return o.side===VIEW&&(o.kind==='recon'||o.kind==='terminal');}).sort(function(a,c){return a.n-c.n;});
+        var mine=GAME.objectives.filter(function(o){return o.side===VIEW&&(o.kind==='checkpoint'||o.kind==='terminal');}).sort(function(a,c){return a.n-c.n;});
         var tgt=null; for(var i=0;i<mine.length;i++){ if(!st.captures[mine[i].id]){ tgt=mine[i]; break; } }
-        if(tgt){ var t=L.latLng(tgt.at[0],tgt.at[1]); bindSel(L.marker(t,{icon:ptIcon(GAME.sides[VIEW].color,tgt.n,'cur')}),t).addTo(objLayer); }
+        if(tgt){ var t=L.latLng(tgt.at[0],tgt.at[1]); bindSel(L.marker(t,{icon:ptIcon(GAME.sides[VIEW].color,tgt.n,'cur')}),t,tgt).addTo(objLayer); }
       }
       if(last) updateLine();
     }

@@ -52,6 +52,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <script src="config.js"></script>
+<script src="schema.js"></script>
 <script src="state.js"></script>
 <script>
 (function(){
@@ -60,7 +61,8 @@
   var sideParam=(location.search.match(/side=([a-z]+)/)||[])[1];
   State.init(SB);
   State.loadConfig(function(db){
-    var GAME=Object.assign({}, SB);
+    // база = firebase/run (config.js) ⊕ пустой валидный шаблон (schema.BLANK); БД перекрывает игровые ключи
+    var GAME=Object.assign({}, JSON.parse(JSON.stringify(window.SCHEMA.BLANK)), SB);
     if(db){ ['sides','shared','geo','mechanics','objectives'].forEach(function(k){ if(db[k]) GAME[k]=db[k]; }); }
     run(GAME);
   });
@@ -84,7 +86,7 @@
   }
 
   // ---- РАЗВЕДТОЧКА ----
-  if(o.kind==='recon'){
+  if(o.kind==='checkpoint'){
     var fragBlock = o.fragment ? readout('Разведданные', o.fragment) : '';
     card.innerHTML='<div class="eyebrow"><span class="tick"></span>'+sideLabel+' · Разведточка<span class="rule"></span></div>'
       +'<div class="point"><span class="lbl">Точка</span><span class="num">'+o.n+'</span></div>'
