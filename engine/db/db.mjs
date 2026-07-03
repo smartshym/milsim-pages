@@ -5,6 +5,7 @@
 //    node db.mjs push [node=config] [file]     # dumps/<node>.json → БД (PUT — замена узла)
 //    node db.mjs backup [метка]                # ВЕСЬ прогон → dumps/backups/<метка>-<время>.json
 //    node db.mjs restore <файл>                # ВЕСЬ прогон ← файл (PUT — замена состояния)
+//    node db.mjs wipe [node=.]                 # DELETE узла (обнулить прогон/конфиг)
 //    node — подпуть под game/<run>. '.' = весь прогон. Примеры: config | . | flags
 //
 //  Миграция (безопасно, с бэкапом):
@@ -64,9 +65,16 @@ if (cmd === 'pull') {
 } else if (cmd === 'restore') {
   if (!a1) throw new Error('restore: укажи файл бэкапа, напр. dumps/backups/<...>.json');
   await push('.', path.isAbsolute(a1) ? a1 : path.resolve(process.cwd(), a1));
+} else if (cmd === 'wipe') {
+  const node = a1 || '.';                       // по умолчанию весь прогон
+  const { url, label } = loc(node);
+  const r = await fetch(url, { method: 'DELETE' });
+  if (!r.ok) throw new Error('wipe failed ' + r.status);
+  console.log('wiped   %s  (сделай backup заранее — восстановление через restore)', label);
 } else {
   console.log('usage:\n'
     + '  node db.mjs pull|push [node=config] [file]   (node: config | . | flags | …)\n'
     + '  node db.mjs backup [метка]                   # весь прогон → dumps/backups/\n'
-    + '  node db.mjs restore <файл>                   # весь прогон ← файл (замена)');
+    + '  node db.mjs restore <файл>                   # весь прогон ← файл (замена)\n'
+    + '  node db.mjs wipe [node=.]                     # удалить узел (обнулить прогон)');
 }
