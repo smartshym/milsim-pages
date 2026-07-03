@@ -135,7 +135,8 @@
       if(isSide){
         var mine=GAME.objectives.filter(function(o){return o.side===VIEW&&(o.kind==='checkpoint'||o.kind==='terminal');}).sort(function(a,c){return a.n-c.n;});
         var tgt=null; for(var i=0;i<mine.length;i++){ if(!st.captures[mine[i].id]){ tgt=mine[i]; break; } }
-        if(tgt){ var t=L.latLng(tgt.at[0],tgt.at[1]); bindSel(L.marker(t,{icon:ptIcon(GAME.sides[VIEW].color,tgt.n,'cur')}),t,tgt).addTo(objLayer); }
+        if(tgt){ var t=L.latLng(tgt.at[0],tgt.at[1]);   // пульс следующей цели: тап = дистанция, но БЕЗ кнопки перехода (страница — после взятия)
+          bindSel(L.marker(t,{icon:ptIcon(GAME.sides[VIEW].color,tgt.n,'cur')}),t,null).addTo(objLayer); }
       }
       if(last) updateLine();
     }
