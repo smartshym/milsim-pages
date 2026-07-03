@@ -40,7 +40,7 @@ window.GAME = {
     { id:'c5', side:'coalition', kind:'recon', n:5, at:[43.813807,77.051281], reveal:'captured', onOpen:{event:'capture'} },
     { id:'c6', side:'coalition', kind:'recon', n:6, at:[43.809303,77.049874], reveal:'captured', onOpen:{event:'capture'} },
     { id:'c7', side:'coalition', kind:'terminal', n:7, at:[43.805200,77.050870], reveal:'captured',
-      onOpen:{event:'capture'}, code:['SH1HB','K4RUN','J3B3L','S4F4R'], onSuccess:{event:'flag', flag:'storage'} },
+      onOpen:{event:'capture'}, code:['SH1HB','K4RUN','J3B3L','S4F4R'], onSuccess:{event:'flag', flag:'storage'}, reveals:'storage' },
 
     // Повстанцы — разведточки
     { id:'p1', side:'insurgents', kind:'recon', n:1, at:[43.803964,77.056651], reveal:'captured', onOpen:{event:'capture'} },
@@ -50,7 +50,7 @@ window.GAME = {
     { id:'p5', side:'insurgents', kind:'recon', n:5, at:[43.813710,77.051218], reveal:'captured', onOpen:{event:'capture'} },
     { id:'p6', side:'insurgents', kind:'recon', n:6, at:[43.809332,77.050331], reveal:'captured', onOpen:{event:'capture'} },
     { id:'p7', side:'insurgents', kind:'terminal', n:7, at:[43.804906,77.050699], reveal:'captured',
-      onOpen:{event:'capture'}, code:['ANS4R','DR4G0','N1GHT','HMM3R'], onSuccess:{event:'flag', flag:'storage'} },
+      onOpen:{event:'capture'}, code:['ANS4R','DR4G0','N1GHT','HMM3R'], onSuccess:{event:'flag', flag:'storage'}, reveals:'storage' },
 
     // Общие точки
     { id:'parking', side:'shared', kind:'parking', label:'Парковка', at:[43.799435,77.048836], reveal:'always' },

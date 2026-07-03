@@ -37,8 +37,11 @@ window.State = (function(){
   function emitCapture(objId, side){
     root.child('captures/' + objId).transaction(function(cur){
       return cur ? undefined : { side:side, device:dev, time:Date.now() };
+    }, function(err, committed){
+      if(err || !committed) return;                          // уже захвачено — не логируем повторно
+      root.child('captures/' + objId + '/time').set(TS());   // серверное время захвата
+      logEvent('capture', objId, side);
     });
-    logEvent('capture', objId, side);
   }
 
   // флаг стороне (storage/evac); contest=true → запускает таймер-контест
@@ -56,9 +59,8 @@ window.State = (function(){
   // подписка на всё состояние; cb(state) при каждом изменении
   function subscribe(cb){
     var state = { captures:{}, flags:{}, contests:{}, live:{}, tracks:{}, events:{} };
-    function emit(){ cb(state); }
     ['captures','flags','contests','live','tracks','events'].forEach(function(k){
-      root.child(k).on('value', function(s){ state[k] = s.val() || {}; emit(); });
+      root.child(k).on('value', function(s){ state[k] = s.val() || {}; cb(state, k); });   // передаём, что изменилось
     });
     return state;
   }

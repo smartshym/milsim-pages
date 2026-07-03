@@ -84,13 +84,18 @@
 
   function renderTable(){
     var rows=cfg.objectives.map(function(o,i){
+      var qr='';
+      if(o.onOpen){
+        if(o.side==='shared') qr=Object.keys(cfg.sides).map(function(s){ return '<a class="lnk mini" target="_blank" href="point.html?id='+(o.id||'')+'&side='+s+'">QR·'+s[0]+'</a>'; }).join('');
+        else qr='<a class="lnk mini" target="_blank" href="point.html?id='+(o.id||'')+'">QR</a>';
+      }
       return '<tr><td>'+(o.id||'')+'</td><td>'+(o.kind||'')+'</td><td class="c-'+(o.side||'')+'">'+(o.side||'')+'</td>'
+        +'<td>'+(o.decoy?'<span style="color:#c66">декой</span>':(o.fragment||'—'))+'</td>'
         +'<td>'+(o.at?o.at[0].toFixed(5)+', '+o.at[1].toFixed(5):'—')+'</td>'
         +'<td>'+revealStr(o)+'</td><td>'+onOpenStr(o)+'</td>'
-        +'<td><button class="mini" data-edit="'+i+'">ред.</button><button class="mini del" data-del="'+i+'">×</button>'
-        +'<a class="lnk mini" target="_blank" href="point.html?id='+(o.id||'')+(o.side==='shared'?'&side=coalition':'')+'">QR</a></td></tr>';
+        +'<td><button class="mini" data-edit="'+i+'">ред.</button><button class="mini del" data-del="'+i+'">×</button>'+qr+'</td></tr>';
     }).join('');
-    el('tbl').innerHTML='<table><tr><th>id</th><th>kind</th><th>side</th><th>координаты</th><th>reveal</th><th>onOpen</th><th></th></tr>'+rows+'</table>';
+    el('tbl').innerHTML='<table><tr><th>id</th><th>kind</th><th>side</th><th>код</th><th>координаты</th><th>reveal</th><th>onOpen</th><th></th></tr>'+rows+'</table>';
     el('tbl').querySelectorAll('[data-edit]').forEach(function(b){ b.onclick=function(){ openForm(+b.dataset.edit); }; });
     el('tbl').querySelectorAll('[data-del]').forEach(function(b){ b.onclick=function(){ if(confirm('Удалить точку?')){ cfg.objectives.splice(+b.dataset.del,1); renderTable(); } }; });
   }
@@ -114,11 +119,14 @@
       +'<div><label>lat</label><input id="f_lat" value="'+(o.at?o.at[0]:'')+'"></div>'
       +'<div><label>lng</label><input id="f_lng" value="'+(o.at?o.at[1]:'')+'"></div>'
       +'<div><label>label</label><input id="f_label" value="'+(o.label||'')+'"></div>'
+      +'<div><label>fragment (код точки)</label><input id="f_frag" value="'+(o.fragment||'')+'"></div>'
+      +'<div><label>ложная (decoy)</label><select id="f_decoy"><option value="">нет</option><option value="1" '+(o.decoy?'selected':'')+'>да</option></select></div>'
       +'<div><label>reveal</label><select id="f_rv">'+opt(['always','captured','flag-side','flag-any'],rv)+'</select></div>'
       +'<div><label>reveal flag</label><input id="f_rvflag" value="'+rvFlag+'"></div>'
       +'<div><label>onOpen</label><select id="f_oo">'+opt(['none','capture','flag','flag-contest'],oo)+'</select></div>'
       +'<div><label>onOpen flag</label><input id="f_ooflag" value="'+ooFlag+'"></div>'
       +'<div><label>onSuccess flag (терминал)</label><input id="f_sf" value="'+((o.onSuccess&&o.onSuccess.flag)||'')+'"></div>'
+      +'<div><label>reveals — id объекта (терминал)</label><input id="f_reveals" value="'+(o.reveals||'')+'"></div>'
       +'<div class="full"><label>code (терминал, через запятую)</label><input id="f_code" value="'+((o.code||[]).join(','))+'"></div>'
       +'<div class="full"><button class="pri" id="f_save">Применить</button> <button id="f_cancel">Отмена</button></div>';
     el('f_save').onclick=saveForm; el('f_cancel').onclick=function(){ f.style.display='none'; };
@@ -130,11 +138,16 @@
     if(val('f_n')!=='') o.n=parseInt(val('f_n'),10);
     if(val('f_label')) o.label=val('f_label');
     var rv=val('f_rv'), rvf=val('f_rvflag');
+    if((rv==='flag-side'||rv==='flag-any') && !rvf){ alert('Для reveal=flag-* укажи имя флага'); return; }
     o.reveal = rv==='flag-side'?{flag:rvf,scope:'side'} : rv==='flag-any'?{flag:rvf,scope:'any'} : rv;
     var oo=val('f_oo'), oof=val('f_ooflag');
+    if((oo==='flag'||oo==='flag-contest') && !oof){ alert('Для onOpen=flag укажи имя флага'); return; }
     if(oo==='capture') o.onOpen={event:'capture'};
     else if(oo==='flag') o.onOpen={event:'flag',flag:oof};
     else if(oo==='flag-contest') o.onOpen={event:'flag',flag:oof,contest:true};
+    if(val('f_frag')) o.fragment=val('f_frag');
+    if(el('f_decoy').value) o.decoy=true;
+    if(val('f_reveals')) o.reveals=val('f_reveals');
     if(val('f_sf')) o.onSuccess={event:'flag',flag:val('f_sf')};
     if(val('f_code')) o.code=val('f_code').split(',').map(function(s){return s.trim().toUpperCase();});
     if(!o.id){ alert('Нужен id'); return; }

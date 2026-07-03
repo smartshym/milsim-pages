@@ -10,7 +10,7 @@
   State.init(SB);
   State.loadConfig(function(db){
     var GAME = Object.assign({}, SB);
-    if(db){ ['sides','geo','mechanics','objectives'].forEach(function(k){ if(db[k]) GAME[k]=db[k]; }); }
+    if(db){ ['sides','shared','geo','mechanics','objectives'].forEach(function(k){ if(db[k]) GAME[k]=db[k]; }); }
     var isAdmin = VIEW==='admin', isSide = !!(GAME.sides[VIEW]);
     if(!isAdmin && !isSide){
       document.body.innerHTML = '<div style="height:100%;display:flex;flex-direction:column;'
@@ -159,7 +159,11 @@
       capbar.style.display = shown ? 'block' : 'none';
     }
 
-    var STATE = State.subscribe(function(st){ renderObjectives(st); renderLive(st); renderCap(st); });
+    var STATE = State.subscribe(function(st, key){
+      if(!key || key==='captures' || key==='flags') renderObjectives(st);
+      if(!key || key==='live' || key==='tracks') renderLive(st);
+      if(!key || key==='contests') renderCap(st);
+    });
     setInterval(function(){ renderCap(STATE); }, 1000);
 
     var me=null, acc=null;
