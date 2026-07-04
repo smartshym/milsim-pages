@@ -86,8 +86,22 @@
     else if(o.onOpen.event==='flag' && side) State.emitFlag(side, o.onOpen.flag, !!o.onOpen.contest);
   }
 
+  // ---- НАВИГАЦИЯ (leadsTo): ведёт к целевой точке, показывает ЕЁ координаты (QR-1 «к старту», старт → первая точка) ----
+  if(o.leadsTo){
+    var tgt=(GAME.objectives||[]).filter(function(x){return x.id===o.leadsTo;})[0];
+    if(!tgt){ card.innerHTML='<div class="lead">Цель «'+o.leadsTo+'» не найдена в конфиге.</div>'; return; }
+    var tc=tgt.at[0].toFixed(6)+', '+tgt.at[1].toFixed(6);
+    var tMaps='https://www.google.com/maps?q='+tgt.at[0]+','+tgt.at[1];
+    var tName=tgt.label||(tgt.n!=null?('точка '+tgt.n):tgt.id);
+    card.innerHTML='<div class="eyebrow"><span class="tick" style="background:'+sideColor+'"></span>'+sideLabel+' · '+(o.label||'Навигация')+'<span class="rule"></span></div>'
+      +'<p class="lead">Идёшь к: <b>'+tName+'</b>. На карте стороны точка уже видна; кнопка ниже — маршрут в Google-картах.</p>'
+      +readout('Координаты цели',tc)
+      +'<div class="actions">'+sideMapBtn(side)+'<a class="btn b-gmap" href="'+tMaps+'" target="_blank" rel="noopener">Открыть Google-карту</a></div>';
+    card.querySelector('.actions').prepend(copyBtn(tc));
+  }
+
   // ---- РАЗВЕДТОЧКА ----
-  if(o.kind==='checkpoint'){
+  else if(o.kind==='checkpoint'){
     var fragBlock = o.fragment ? readout('Разведданные', o.fragment) : '';
     card.innerHTML='<div class="eyebrow"><span class="tick"></span>'+sideLabel+' · Разведточка<span class="rule"></span></div>'
       +'<div class="point"><span class="lbl">Точка</span><span class="num">'+o.n+'</span></div>'
@@ -95,16 +109,6 @@
       +'<div class="actions">'+sideMapBtn(side)+'<a class="btn b-gmap" href="'+mapsUrl+'" target="_blank" rel="noopener">Открыть Google-карту</a></div>';
     card.querySelector('.actions').prepend(copyBtn(coordsStr));
     if(o.fragment) card.querySelector('.actions').appendChild(copyBtn(o.fragment,'Скопировать фрагмент','b-frag'));
-  }
-
-  // ---- СТАРТ ----
-  else if(o.kind==='start'){
-    card.innerHTML='<div class="eyebrow"><span class="tick" style="background:'+sideColor+'"></span>'+sideLabel+' · Старт<span class="rule"></span></div>'
-      +'<div class="point"><span class="lbl">Зона</span><span class="num" style="font-size:34px;letter-spacing:.05em">СТАРТ</span></div>'
-      +'<p class="lead">Точка старта вашей стороны. Отсюда выдвигаешься к первой разведточке.</p>'
-      +readout('Координаты',coordsStr)
-      +'<div class="actions">'+sideMapBtn(side)+'<a class="btn b-gmap" href="'+mapsUrl+'" target="_blank" rel="noopener">Открыть Google-карту</a></div>';
-    card.querySelector('.actions').prepend(copyBtn(coordsStr));
   }
 
   // ---- ЭВАКУАЦИЯ ----

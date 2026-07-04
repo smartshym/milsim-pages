@@ -125,6 +125,7 @@
     case 'code':      return fld('code (через запятую)','<input id="f_code" value="'+((o.code||[]).join(','))+'">');
     case 'reveals':   return fld('reveals — id объекта','<input id="f_reveals" value="'+(o.reveals||'')+'">');
     case 'onSuccess': return fld('onSuccess flag','<input id="f_sf" value="'+((o.onSuccess&&o.onSuccess.flag)||'')+'">');
+    case 'leadsTo':   return fld('ведёт к — id точки','<input id="f_leadsTo" value="'+(o.leadsTo||'')+'">');
     default: return '';
   } }
 
@@ -141,6 +142,7 @@
     if(val('f_frag')) o.fragment=val('f_frag');
     if(has('f_decoy') && el('f_decoy').value) o.decoy=true;
     if(val('f_reveals')) o.reveals=val('f_reveals');
+    if(val('f_leadsTo')) o.leadsTo=val('f_leadsTo');
     if(val('f_sf')) o.onSuccess={event:'flag',flag:val('f_sf')};
     if(val('f_code')) o.code=val('f_code').split(',').map(function(s){return s.trim().toUpperCase();});
     return o;

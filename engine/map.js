@@ -95,7 +95,7 @@
     function bindSel(m,ll,obj){ m.on('click',function(e){ L.DomEvent.stopPropagation(e); select(ll,obj); }); return m; }
     function updateGoPage(obj){
       var g=document.getElementById('goPage'); if(!g) return;                 // есть только на карте стороны
-      if(obj && window.SCHEMA.QR.indexOf(obj.kind)>=0 && (obj.side===VIEW || obj.side==='shared')){   // только свои точки со страницей (+ общие)
+      if(obj && !obj.leadsTo && window.SCHEMA.QR.indexOf(obj.kind)>=0 && (obj.side===VIEW || obj.side==='shared')){   // свои точки со страницей (+общие), кроме навигационных leadsTo (старт/guide — их страница timed)
         g.href='point.html?id='+obj.id+(obj.side==='shared'?'&side='+VIEW:'');
         g.textContent='Открыть: '+(obj.label||('точка '+(obj.n!=null?obj.n:obj.id)))+' →';
         g.style.display='block';
@@ -118,6 +118,7 @@
     function renderObjectives(st){
       objLayer.clearLayers();
       GAME.objectives.forEach(function(o){
+        if(o.kind==='guide') return;                      // раздаточный QR «к старту» — маркера на карте нет
         var at=L.latLng(o.at[0],o.at[1]), color=objColor(o), captured=!!st.captures[o.id];
         var numbered=(o.kind==='checkpoint'||o.kind==='terminal');
         if(isAdmin){
@@ -133,10 +134,14 @@
         }
       });
       if(isSide){
-        var mine=GAME.objectives.filter(function(o){return o.side===VIEW&&(o.kind==='checkpoint'||o.kind==='terminal');}).sort(function(a,c){return a.n-c.n;});
-        var tgt=null; for(var i=0;i<mine.length;i++){ if(!st.captures[mine[i].id]){ tgt=mine[i]; break; } }
-        if(tgt){ var t=L.latLng(tgt.at[0],tgt.at[1]);   // пульс следующей цели: тап = дистанция, но БЕЗ кнопки перехода (страница — после взятия)
-          bindSel(L.marker(t,{icon:ptIcon(GAME.sides[VIEW].color,tgt.n,'cur')}),t,null).addTo(objLayer); }
+        var startObj=GAME.objectives.filter(function(o){return o.kind==='start'&&o.side===VIEW;})[0];
+        var started=!startObj || !!st.captures[startObj.id];   // первая точка появляется только ПОСЛЕ скана старта (QR-2); нет старта в конфиге → как раньше
+        if(started){
+          var mine=GAME.objectives.filter(function(o){return o.side===VIEW&&(o.kind==='checkpoint'||o.kind==='terminal');}).sort(function(a,c){return a.n-c.n;});
+          var tgt=null; for(var i=0;i<mine.length;i++){ if(!st.captures[mine[i].id]){ tgt=mine[i]; break; } }
+          if(tgt){ var t=L.latLng(tgt.at[0],tgt.at[1]);   // пульс следующей цели: тап = дистанция, но БЕЗ кнопки перехода (страница — после взятия)
+            bindSel(L.marker(t,{icon:ptIcon(GAME.sides[VIEW].color,tgt.n,'cur')}),t,null).addTo(objLayer); }
+        }
       }
       if(last) updateLine();
     }

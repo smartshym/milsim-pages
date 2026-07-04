@@ -5,12 +5,13 @@
 //  Добавить новый тип точки = правка данных здесь, а не логики формы.
 // ============================================================================
 window.SCHEMA = {
-  // типы объектов (kind)
-  KINDS: ['checkpoint', 'terminal', 'parking', 'storage', 'evac', 'start'],
+  // типы объектов (kind). start = QR на месте старта (ведёт к первой точке); guide = раздаточный
+  // QR «к старту» (страница есть, на карте маркера нет — раскрывает старт флагом).
+  KINDS: ['checkpoint', 'terminal', 'parking', 'storage', 'evac', 'start', 'guide'],
 
-  // kind'ы, у которых есть QR-страница (point.html) → в админке даётся QR-ссылка,
-  // на карте стороны — кнопка «открыть страницу». Не завязано на onOpen (у start события нет).
-  QR: ['checkpoint', 'terminal', 'evac', 'start'],
+  // kind'ы, у которых есть QR-страница (point.html) → в админке даётся QR-ссылка.
+  // На карте кнопку «открыть страницу» дают только НЕ-leadsTo точки (см. map.js).
+  QR: ['checkpoint', 'terminal', 'evac', 'start', 'guide'],
 
   // enum'ы правил (общие id/kind/side/lat/lng есть всегда)
   ENUMS: {
@@ -25,7 +26,8 @@ window.SCHEMA = {
     parking:    ['label'],
     storage:    ['label'],
     evac:       ['label'],
-    start:      ['label']
+    start:      ['label', 'leadsTo'],
+    guide:      ['label', 'leadsTo']
   },
 
   // дефолты reveal/onOpen по kind (подставляются в «Расширенное» при выборе типа)
@@ -35,7 +37,8 @@ window.SCHEMA = {
     parking:    { reveal: 'always',    onOpen: 'none' },
     storage:    { reveal: 'flag-side', rvflag: 'storage', onOpen: 'none' },
     evac:       { reveal: 'flag-side', rvflag: 'evac',    onOpen: 'flag-contest', ooflag: 'evac' },
-    start:      { reveal: 'always',    onOpen: 'none' }
+    start:      { reveal: 'flag-side', rvflag: 'brief',   onOpen: 'capture' },
+    guide:      { reveal: 'always',    onOpen: 'flag',    ooflag: 'brief' }
   },
 
   // пустой ВАЛИДНЫЙ прогон — с него стартует чистый сервис, заполняется в админке.
