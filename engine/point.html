@@ -125,19 +125,21 @@
 
   // ---- ТЕРМИНАЛ ----
   else if(o.kind==='terminal'){
-    var inputs=''; for(var k=0;k<o.code.length;k++) inputs+='<input maxlength="5" inputmode="latin" autocomplete="off">';
+    var allDigits=(o.code||[]).every(function(c){ return /^[0-9]+$/.test(''+c); });   // код из цифр (координаты) → числовой ввод
+    var inputs=''; for(var k=0;k<o.code.length;k++) inputs+='<input maxlength="'+(''+o.code[k]).length+'" inputmode="'+(allDigits?'numeric':'latin')+'" autocomplete="off">';
     card.innerHTML='<div class="eyebrow"><span class="tick"></span>'+sideLabel+' · Дешифровка<span class="rule"></span></div>'
       +'<div class="point"><span class="lbl">Пункт</span><span class="num">'+o.n+'</span></div>'
-      +'<p class="lead">Введи собранный код доступа.</p>'
+      +'<p class="lead">Введи фрагменты по порядку — как собирал на точках.</p>'
       +'<div class="code" id="code">'+inputs+'</div>'
       +'<div class="status" id="st">Ожидание ввода</div>'
       +'<div class="actions"><button class="btn" id="go">Подтвердить</button></div>'
       +'<div id="ok" class="hidden"></div>';
     var boxes=[].slice.call(card.querySelectorAll('.code input')), st=card.querySelector('#st');
-    boxes.forEach(function(b,i){ b.addEventListener('input',function(){ b.value=b.value.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,5);
-      if(b.value.length===5&&i<boxes.length-1) boxes[i+1].focus(); }); });
+    boxes.forEach(function(b,i){ var L=(''+o.code[i]).length;
+      b.addEventListener('input',function(){ var v=b.value.replace(allDigits?/[^0-9]/g:/[^A-Za-z0-9]/g,''); if(!allDigits) v=v.toUpperCase(); b.value=v.slice(0,L);
+        if(b.value.length===L&&i<boxes.length-1) boxes[i+1].focus(); }); });
     function check(){
-      var ok=boxes.every(function(b,i){ return b.value===o.code[i]; });
+      var ok=boxes.every(function(b,i){ return b.value===(''+o.code[i]); });
       if(!ok){ st.textContent='Код отклонён'; st.className='status bad'; return; }
       st.textContent='Дешифровано'; st.className='status good';
       if(o.onSuccess&&o.onSuccess.event==='flag') State.emitFlag(o.side, o.onSuccess.flag, !!o.onSuccess.contest);
