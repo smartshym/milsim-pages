@@ -68,6 +68,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <script src="config.js"></script>
 <script src="schema.js"></script>
+<script src="labels.js"></script>
 <script src="state.js"></script>
 <script>
 (function(){
@@ -88,8 +89,12 @@
     t.onchange=function(){ cfg.mechanics=cfg.mechanics||{}; cfg.mechanics.showEnemyCaptures=t.checked; renderMeta(); }; }
   function renderMeta(){ el('meta').value=JSON.stringify({sides:cfg.sides,shared:cfg.shared,geo:cfg.geo,mechanics:cfg.mechanics}, null, 2); }
 
-  function revealStr(o){ var r=o.reveal||'always'; if(typeof r==='string') return r; return (r.flag||'?')+'/'+(r.scope||'any'); }
-  function onOpenStr(o){ if(!o.onOpen) return '—'; return o.onOpen.event+(o.onOpen.flag?(':'+o.onOpen.flag):'')+(o.onOpen.contest?'+timer':''); }
+  function revealStr(o){ var r=o.reveal||'always', L=window.LABELS.reveal;
+    if(typeof r==='string') return L[r]||r;
+    var key=r.scope==='side'?'flag-side':'flag-any'; return (L[key]||key)+(r.flag?' ('+r.flag+')':''); }
+  function onOpenStr(o){ if(!o.onOpen) return window.LABELS.onOpen.none;
+    var key=o.onOpen.event==='capture'?'capture':(o.onOpen.contest?'flag-contest':'flag');
+    return (window.LABELS.onOpen[key]||key)+(o.onOpen.flag?' ('+o.onOpen.flag+')':''); }
 
   function renderTable(){
     var rows=cfg.objectives.map(function(o,i){
@@ -98,34 +103,36 @@
         if(o.side==='shared') qr=Object.keys(cfg.sides).map(function(s){ return '<a class="lnk mini" target="_blank" href="point.html?id='+(o.id||'')+'&side='+s+'">QR·'+s[0]+'</a>'; }).join('');
         else qr='<a class="lnk mini" target="_blank" href="point.html?id='+(o.id||'')+'">QR</a>';
       }
-      return '<tr><td>'+(o.id||'')+'</td><td>'+(o.kind||'')+'</td><td class="c-'+(o.side||'')+'">'+(o.side||'')+'</td>'
+      var kindL=(window.LABELS.kinds[o.kind]||o.kind||''), sideL=((cfg.sides[o.side]&&cfg.sides[o.side].label)||(o.side==='shared'?'общая':(o.side||'')));
+      return '<tr><td>'+(o.id||'')+'</td><td>'+kindL+'</td><td class="c-'+(o.side||'')+'">'+sideL+'</td>'
         +'<td>'+(o.decoy?'<span style="color:#c66">декой</span>':(o.fragment||'—'))+'</td>'
         +'<td>'+(o.at?o.at[0].toFixed(5)+', '+o.at[1].toFixed(5):'—')+'</td>'
         +'<td>'+revealStr(o)+'</td><td>'+onOpenStr(o)+'</td>'
         +'<td><button class="mini" data-edit="'+i+'">ред.</button><button class="mini del" data-del="'+i+'">×</button>'+qr+'</td></tr>';
     }).join('');
-    el('tbl').innerHTML='<table><tr><th>id</th><th>kind</th><th>side</th><th>код</th><th>координаты</th><th>reveal</th><th>onOpen</th><th></th></tr>'+rows+'</table>';
+    var C=window.LABELS.columns;
+    el('tbl').innerHTML='<table><tr><th>'+C.id+'</th><th>'+C.kind+'</th><th>'+C.side+'</th><th>'+C.code+'</th><th>'+C.at+'</th><th>'+C.reveal+'</th><th>'+C.onOpen+'</th><th></th></tr>'+rows+'</table>';
     el('tbl').querySelectorAll('[data-edit]').forEach(function(b){ b.onclick=function(){ openForm(+b.dataset.edit); }; });
     el('tbl').querySelectorAll('[data-del]').forEach(function(b){ b.onclick=function(){ if(confirm('Удалить точку?')){ cfg.objectives.splice(+b.dataset.del,1); renderTable(); } }; });
   }
 
-  function sideOpts(sel){ var ks=Object.keys(cfg.sides).concat(['shared']); return ks.map(function(s){ return '<option '+(s===sel?'selected':'')+'>'+s+'</option>'; }).join(''); }
-  function opt(list,sel){ return list.map(function(s){ return '<option '+(s===sel?'selected':'')+'>'+s+'</option>'; }).join(''); }
+  function sideOpts(sel){ var ks=Object.keys(cfg.sides).concat(['shared']); return ks.map(function(s){ var lbl=(cfg.sides[s]&&cfg.sides[s].label)||(s==='shared'?'общая':s); return '<option value="'+s+'"'+(s===sel?' selected':'')+'>'+lbl+'</option>'; }).join(''); }
+  function opt(list,sel,map){ return list.map(function(s){ return '<option value="'+s+'"'+(s===sel?' selected':'')+'>'+((map&&map[s])||s)+'</option>'; }).join(''); }
 
   function has(id){ return !!el(id); }
   function fld(lbl,inner){ return '<div><label>'+lbl+'</label>'+inner+'</div>'; }
   function kindDefaults(k){ return window.SCHEMA.DEFAULTS[k] || {reveal:'always',onOpen:'none'}; }
 
   // рендер одного поля по имени (id полей неизменны → currentForm() их читает по наличию)
-  function fieldHtml(fn,o){ switch(fn){
-    case 'n':         return fld('n (номер)','<input id="f_n" value="'+(o.n!=null?o.n:'')+'">');
-    case 'label':     return fld('label','<input id="f_label" value="'+(o.label||'')+'">');
-    case 'fragment':  return fld('fragment (код точки)','<input id="f_frag" value="'+(o.fragment||'')+'">');
-    case 'decoy':     return fld('ложная (decoy)','<select id="f_decoy"><option value="">нет</option><option value="1" '+(o.decoy?'selected':'')+'>да</option></select>');
-    case 'code':      return fld('code (через запятую)','<input id="f_code" value="'+((o.code||[]).join(','))+'">');
-    case 'reveals':   return fld('reveals — id объекта','<input id="f_reveals" value="'+(o.reveals||'')+'">');
-    case 'onSuccess': return fld('onSuccess flag','<input id="f_sf" value="'+((o.onSuccess&&o.onSuccess.flag)||'')+'">');
-    case 'leadsTo':   return fld('ведёт к — id точки','<input id="f_leadsTo" value="'+(o.leadsTo||'')+'">');
+  function fieldHtml(fn,o){ var L=window.LABELS.fields; switch(fn){
+    case 'n':         return fld(L.n,'<input id="f_n" value="'+(o.n!=null?o.n:'')+'">');
+    case 'label':     return fld(L.label,'<input id="f_label" value="'+(o.label||'')+'">');
+    case 'fragment':  return fld(L.fragment,'<input id="f_frag" value="'+(o.fragment||'')+'">');
+    case 'decoy':     return fld(L.decoy,'<select id="f_decoy"><option value="">нет</option><option value="1" '+(o.decoy?'selected':'')+'>да</option></select>');
+    case 'code':      return fld(L.code,'<input id="f_code" value="'+((o.code||[]).join(','))+'">');
+    case 'reveals':   return fld(L.reveals,'<input id="f_reveals" value="'+(o.reveals||'')+'">');
+    case 'onSuccess': return fld(L.onSuccess,'<input id="f_sf" value="'+((o.onSuccess&&o.onSuccess.flag)||'')+'">');
+    case 'leadsTo':   return fld(L.leadsTo,'<input id="f_leadsTo" value="'+(o.leadsTo||'')+'">');
     default: return '';
   } }
 
@@ -155,17 +162,18 @@
     else { rv=kd.reveal; rvFlag=kd.rvflag||''; }
     if(!freshAdv && o.onOpen!==undefined){ oo=!o.onOpen?'none':(o.onOpen.event==='capture'?'capture':(o.onOpen.contest?'flag-contest':'flag')); ooFlag=(o.onOpen&&o.onOpen.flag)||''; }
     else { oo=kd.onOpen; ooFlag=kd.ooflag||''; }
-    var h=fld('id','<input id="f_id" value="'+(o.id||'')+'">')
-      +'<div><label>kind</label><select id="f_kind">'+opt(window.SCHEMA.KINDS,k)+'</select></div>'
-      +fld('side','<select id="f_side">'+sideOpts(o.side)+'</select>')
-      +fld('lat','<input id="f_lat" value="'+(o.at?o.at[0]:'')+'">')
-      +fld('lng','<input id="f_lng" value="'+(o.at?o.at[1]:'')+'">');
-    (window.SCHEMA.FIELDS[k]||[]).forEach(function(fn){ h+=fieldHtml(fn,o); });   // поля под kind — из schema.FIELDS
-    h+='<details class="full advbox"><summary>Расширенное · reveal / onOpen (по умолчанию из kind)</summary><div class="advgrid">'
-      +fld('reveal','<select id="f_rv">'+opt(window.SCHEMA.ENUMS.reveal,rv)+'</select>')
-      +fld('reveal flag','<input id="f_rvflag" value="'+rvFlag+'">')
-      +fld('onOpen','<select id="f_oo">'+opt(window.SCHEMA.ENUMS.onOpen,oo)+'</select>')
-      +fld('onOpen flag','<input id="f_ooflag" value="'+ooFlag+'">')
+    var L=window.LABELS;
+    var h=fld(L.fields.id,'<input id="f_id" value="'+(o.id||'')+'">')
+      +'<div><label>'+L.fields.kind+'</label><select id="f_kind">'+opt(window.SCHEMA.KINDS,k,L.kinds)+'</select></div>'
+      +fld(L.fields.side,'<select id="f_side">'+sideOpts(o.side)+'</select>')
+      +fld(L.fields.lat,'<input id="f_lat" value="'+(o.at?o.at[0]:'')+'">')
+      +fld(L.fields.lng,'<input id="f_lng" value="'+(o.at?o.at[1]:'')+'">');
+    (window.SCHEMA.FIELDS[k]||[]).forEach(function(fn){ h+=fieldHtml(fn,o); });   // поля под тип — из schema.FIELDS
+    h+='<details class="full advbox"><summary>Расширенное · показ / событие (по умолчанию из типа)</summary><div class="advgrid">'
+      +fld(L.fields.reveal,'<select id="f_rv">'+opt(window.SCHEMA.ENUMS.reveal,rv,L.reveal)+'</select>')
+      +fld(L.fields.rvflag,'<input id="f_rvflag" value="'+rvFlag+'">')
+      +fld(L.fields.onOpen,'<select id="f_oo">'+opt(window.SCHEMA.ENUMS.onOpen,oo,L.onOpen)+'</select>')
+      +fld(L.fields.ooflag,'<input id="f_ooflag" value="'+ooFlag+'">')
       +'</div></details>'
       +'<div class="full" style="margin-top:8px"><button class="pri" id="f_save">Применить</button> <button id="f_cancel">Отмена</button></div>';
     var f=el('form'); f.style.display='grid'; f.className='form'; f.innerHTML=h;
