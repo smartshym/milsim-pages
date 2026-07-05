@@ -167,9 +167,11 @@
     }
 
     function renderCap(st){
-      var shown=false, dur=GAME.mechanics.captureSec;
+      var shown=false;
       for(var fi=0;fi<contestFlags.length;fi++){
-        var c=st.contests[contestFlags[fi]]; if(!c||!c.time) continue; shown=true;
+        var flag=contestFlags[fi], c=st.contests[flag]; if(!c||!c.time) continue; shown=true;
+        var cobj=GAME.objectives.filter(function(o){return o.onOpen&&o.onOpen.contest&&o.onOpen.flag===flag;})[0];
+        var dur=(cobj&&cobj.captureSec)||GAME.mechanics.captureSec||900;   // время захвата — с точки, иначе по умолчанию
         var elapsed=(State.serverNow()-c.time)/1000;
         if(isSide){
           if(c.side===VIEW){ capbar.className='green'; capbar.textContent= elapsed>=dur?'Точка захвачена ✓':('Захват точки · '+mmss(elapsed)); }

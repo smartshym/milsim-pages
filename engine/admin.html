@@ -107,11 +107,13 @@
         +'<button class="mini del sdel">×</button></div>'; }).join('');
     el('settings').innerHTML=
        '<div class="full"><label>'+L.sides+'</label><div id="sides">'+sidesHtml+'</div><button class="mini" id="addSide" style="margin-top:4px">+ сторона</button></div>'
-      +fld(L.captureSec,'<input id="s_cap" type="number" value="'+(m.captureSec!=null?m.captureSec:900)+'">')
-      +fld(L.posIntervalSec,'<input id="s_pos" type="number" value="'+(m.posIntervalSec!=null?m.posIntervalSec:60)+'">')
-      +fld(L.staleSec,'<input id="s_stale" type="number" value="'+(m.staleSec!=null?m.staleSec:300)+'">')
       +fld('Общее время игры (мин)','<input id="s_gt" type="number" value="'+(m.gameTime!=null?m.gameTime:'')+'">')
       +'<div><label>'+L.showEnemyCaptures+'</label><select id="s_enemy"><option value="1"'+(m.showEnemyCaptures!==false?' selected':'')+'>да</option><option value="0"'+(m.showEnemyCaptures===false?' selected':'')+'>нет</option></select></div>'
+      +'<details class="full advbox"><summary>Техническое (тюнинг трекинга)</summary><div class="advgrid">'
+        +fld(L.captureSec,'<input id="s_cap" type="number" value="'+(m.captureSec!=null?m.captureSec:900)+'">')
+        +fld(L.posIntervalSec,'<input id="s_pos" type="number" value="'+(m.posIntervalSec!=null?m.posIntervalSec:60)+'">')
+        +fld(L.staleSec,'<input id="s_stale" type="number" value="'+(m.staleSec!=null?m.staleSec:300)+'">')
+      +'</div></details>'
       +'<details class="full advbox"><summary>'+L.geo+' (георефер.)</summary><div class="advgrid">'
         +fld('Изображение','<input id="g_img" value="'+(geo.image||'')+'">')
         +fld('Север','<input id="g_n" value="'+(geo.north!=null?geo.north:'')+'">')
@@ -230,6 +232,7 @@
     if(has('f_decoy') && el('f_decoy').value) o.decoy=true;
     if(val('f_reveals')) o.reveals=val('f_reveals');
     if(val('f_leadsTo')) o.leadsTo=val('f_leadsTo');
+    if(val('f_capsec')) o.captureSec=parseInt(val('f_capsec'),10);
     if(val('f_sf')) o.onSuccess={event:'flag',flag:val('f_sf')};
     if(val('f_code')) o.code=val('f_code').split(',').map(function(s){return s.trim().toUpperCase();});
     return o;
@@ -253,6 +256,7 @@
       +fld(L.fields.rvflag,'<input id="f_rvflag" value="'+rvFlag+'">')
       +fld(L.fields.onOpen,'<select id="f_oo">'+opt(window.SCHEMA.ENUMS.onOpen,oo,L.onOpen)+'</select>')
       +fld(L.fields.ooflag,'<input id="f_ooflag" value="'+ooFlag+'">')
+      +fld(L.fields.captureSec+' — если пусто, берётся «по умолчанию»','<input id="f_capsec" type="number" value="'+(o.captureSec!=null?o.captureSec:'')+'">')
       +'</div></details>'
       +'<div class="full" style="margin-top:8px"><button class="pri" id="f_save">Применить</button> <button id="f_cancel">Отмена</button></div>';
     var f=el('form'); f.style.display='grid'; f.className='form'; f.innerHTML=h;
