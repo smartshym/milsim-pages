@@ -47,7 +47,16 @@ window.State = (function(){
   // флаг стороне (storage/evac); contest=true → запускает таймер-контест
   function emitFlag(side, flag, contest){
     root.child('flags/' + side + '/' + flag).set({ time:TS(), device:dev });
-    if(contest) root.child('contests/' + flag).set({ side:side, time:TS() });
+    if(contest){
+      // время старта фиксируется ОДИН раз; сбрасывается только при перехвате ДРУГОЙ стороной.
+      // тот же захватчик (рефреш/рескан) таймер не сбрасывает.
+      root.child('contests/' + flag).transaction(function(cur){
+        if(cur && cur.side === side) return;              // abort — оставить как есть
+        return { side:side, time:Date.now() };
+      }, function(err, committed){
+        if(!err && committed) root.child('contests/' + flag + '/time').set(TS());   // серверное время
+      });
+    }
     logEvent('flag:' + flag, null, side);
   }
 
