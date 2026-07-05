@@ -60,6 +60,10 @@
   <h2>Настройки игры</h2>
   <div id="settings" class="form"></div>
 
+  <h2>Координаты</h2>
+  <div id="coords"></div>
+  <button id="addCoord">+ Координата</button>
+
   <h2>Точки</h2>
   <div id="tbl"></div>
   <button id="add">+ Добавить точку</button>
@@ -85,7 +89,7 @@
 
   State.loadConfig(function(db){ cfg = db || defCfg(); if(!cfg.objectives) cfg.objectives=[]; renderAll(); });
 
-  function renderAll(){ renderTable(); renderSettings(); }
+  function renderAll(){ renderTable(); renderSettings(); renderCoords(); }
 
   // --- настройки игры (нормальные поля вместо сырого JSON) ---
   function renderSettings(){
@@ -128,6 +132,29 @@
     cfg.shared=cfg.shared||{}; cfg.shared.color=val('g_shared');
   }
 
+  // --- список координат (одна координата → под несколько точек) ---
+  function coordInUse(id){ return (cfg.objectives||[]).some(function(o){ return o.coord===id; }); }
+  function newCoordId(){ var n=0, cs=cfg.coords||{}; do{ n++; }while(cs['coord'+n]); return 'coord'+n; }
+  function renderCoords(){
+    var cs=cfg.coords||{};
+    var rows=Object.keys(cs).map(function(id){ var c=cs[id]||{};
+      return '<div class="siderow coordrow" data-coord="'+id+'"><span class="sk">'+id+'</span>'
+        +'<input class="cl" value="'+(c.label||'')+'" placeholder="Название" style="width:160px">'
+        +'<input class="clat" value="'+(c.lat!=null?c.lat:'')+'" placeholder="Широта" style="width:120px">'
+        +'<input class="clng" value="'+(c.lng!=null?c.lng:'')+'" placeholder="Долгота" style="width:120px">'
+        +'<button class="mini del cdel">×</button></div>'; }).join('');
+    el('coords').innerHTML=rows||'<div class="sub">координат нет</div>';
+    el('addCoord').onclick=function(){ readCoords(); var id=newCoordId(); (cfg.coords=cfg.coords||{})[id]={label:'Новая точка',lat:0,lng:0}; renderCoords(); };
+    el('coords').querySelectorAll('.cdel').forEach(function(b){ b.onclick=function(){ var id=b.parentNode.getAttribute('data-coord');
+      if(coordInUse(id)){ alert('Координата используется точкой — сначала перенастрой точки.'); return; }
+      readCoords(); delete cfg.coords[id]; renderCoords(); renderTable(); }; });
+  }
+  function readCoords(){ var cs={};
+    if(el('coords')) el('coords').querySelectorAll('.coordrow').forEach(function(r){ var id=r.getAttribute('data-coord');
+      cs[id]={ label:r.querySelector('.cl').value.trim(), lat:parseFloat(r.querySelector('.clat').value), lng:parseFloat(r.querySelector('.clng').value) }; });
+    cfg.coords=cs;
+  }
+
   function revealStr(o){ var r=o.reveal||'always', L=window.LABELS.reveal;
     if(typeof r==='string') return L[r]||r;
     var key=r.scope==='side'?'flag-side':'flag-any'; return (L[key]||key)+(r.flag?' ('+r.flag+')':''); }
@@ -145,7 +172,7 @@
       var kindL=(window.LABELS.kinds[o.kind]||o.kind||''), sideL=((cfg.sides[o.side]&&cfg.sides[o.side].label)||(o.side==='shared'?'общая':(o.side||'')));
       return '<tr><td>'+(o.id||'')+'</td><td>'+kindL+'</td><td class="c-'+(o.side||'')+'">'+sideL+'</td>'
         +'<td>'+(o.decoy?'<span style="color:#c66">декой</span>':(o.fragment||'—'))+'</td>'
-        +'<td>'+(o.at?o.at[0].toFixed(5)+', '+o.at[1].toFixed(5):'—')+'</td>'
+        +'<td>'+coordCell(o)+'</td>'
         +'<td>'+revealStr(o)+'</td><td>'+onOpenStr(o)+'</td>'
         +'<td><button class="mini" data-edit="'+i+'">ред.</button><button class="mini del" data-del="'+i+'">×</button>'+qr+'</td></tr>';
     }).join('');
@@ -157,6 +184,10 @@
 
   function sideOpts(sel){ var ks=Object.keys(cfg.sides).concat(['shared']); return ks.map(function(s){ var lbl=(cfg.sides[s]&&cfg.sides[s].label)||(s==='shared'?'общая':s); return '<option value="'+s+'"'+(s===sel?' selected':'')+'>'+lbl+'</option>'; }).join(''); }
   function opt(list,sel,map){ return list.map(function(s){ return '<option value="'+s+'"'+(s===sel?' selected':'')+'>'+((map&&map[s])||s)+'</option>'; }).join(''); }
+  function coordOpts(sel){ var cs=cfg.coords||{}; return '<option value="">— нет —</option>'+Object.keys(cs).map(function(id){ var c=cs[id]||{}; return '<option value="'+id+'"'+(id===sel?' selected':'')+'>'+(c.label||id)+' ('+c.lat+', '+c.lng+')</option>'; }).join(''); }
+  function coordCell(o){ var c=(o.coord&&cfg.coords)?cfg.coords[o.coord]:null;
+    if(c) return (c.label||o.coord)+' <span style="color:var(--ink-dim)">'+(+c.lat).toFixed(5)+', '+(+c.lng).toFixed(5)+'</span>';
+    return o.at?o.at[0].toFixed(5)+', '+o.at[1].toFixed(5):'—'; }
 
   function has(id){ return !!el(id); }
   function fld(lbl,inner){ return '<div><label>'+lbl+'</label>'+inner+'</div>'; }
@@ -176,13 +207,13 @@
   } }
 
   function openForm(idx){ editIdx=idx;
-    var g=cfg.geo||{}, def={ kind:window.SCHEMA.KINDS[0], side:Object.keys(cfg.sides||{})[0]||'shared',
-      at:[(g.north+g.south)/2||43.80, (g.east+g.west)/2||77.05] };
+    var def={ kind:window.SCHEMA.KINDS[0], side:Object.keys(cfg.sides||{})[0]||'shared', coord:'' };
     renderForm(idx===null ? def : cfg.objectives[idx], false); }
 
   // читает текущие введённые поля (какие есть для выбранного kind)
   function currentForm(){
-    var o={ id:val('f_id'), kind:val('f_kind'), side:val('f_side'), at:[parseFloat(val('f_lat')),parseFloat(val('f_lng'))] };
+    var o={ id:val('f_id'), kind:val('f_kind'), side:val('f_side') };
+    if(val('f_coord')) o.coord=val('f_coord');
     if(has('f_n') && val('f_n')!=='') o.n=parseInt(val('f_n'),10);
     if(val('f_label')) o.label=val('f_label');
     if(val('f_frag')) o.fragment=val('f_frag');
@@ -205,8 +236,7 @@
     var h=fld(L.fields.id,'<input id="f_id" value="'+(o.id||'')+'">')
       +'<div><label>'+L.fields.kind+'</label><select id="f_kind">'+opt(window.SCHEMA.KINDS,k,L.kinds)+'</select></div>'
       +fld(L.fields.side,'<select id="f_side">'+sideOpts(o.side)+'</select>')
-      +fld(L.fields.lat,'<input id="f_lat" value="'+(o.at?o.at[0]:'')+'">')
-      +fld(L.fields.lng,'<input id="f_lng" value="'+(o.at?o.at[1]:'')+'">');
+      +fld(L.fields.coord,'<select id="f_coord">'+coordOpts(o.coord)+'</select>');
     (window.SCHEMA.FIELDS[k]||[]).forEach(function(fn){ h+=fieldHtml(fn,o); });   // поля под тип — из schema.FIELDS
     h+='<details class="full advbox"><summary>Расширенное · показ / событие (по умолчанию из типа)</summary><div class="advgrid">'
       +fld(L.fields.reveal,'<select id="f_rv">'+opt(window.SCHEMA.ENUMS.reveal,rv,L.reveal)+'</select>')
@@ -239,7 +269,7 @@
   el('add').onclick=function(){ openForm(null); };
   el('seed').onclick=function(){ if(confirm('Сбросить конфиг до пустого шаблона (новый прогон)?')){ cfg=defCfg(); renderAll(); } };
   el('save').onclick=function(){
-    readSettings();
+    readSettings(); readCoords();
     State.saveConfig(cfg).then(function(){ msg('сохранено ✓'); }, function(e){ alert('Ошибка: '+e.message); });
   };
 })();

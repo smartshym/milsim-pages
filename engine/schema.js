@@ -53,6 +53,7 @@ window.SCHEMA = {
            north: 43.81687355441687, south: 43.78795236649337,
            east: 77.07101927537143, west: 77.04279873867411 },
     mechanics: { captureSec: 900, posIntervalSec: 60, staleSec: 300, showEnemyCaptures: true },
+    coords: {},
     objectives: []
   }
 };

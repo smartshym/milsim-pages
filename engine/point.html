@@ -72,8 +72,8 @@
   var side = (o.side!=='shared') ? o.side : sideParam;
   var sideLabel = (GAME.sides[side]||{}).label || '';
   var sideColor = (GAME.sides[side]||{}).color || 'var(--rust)';
-  var coordsStr = o.at[0].toFixed(6)+', '+o.at[1].toFixed(6);
-  var mapsUrl = 'https://www.google.com/maps?q='+o.at[0]+','+o.at[1];
+  var coordsStr = o.at ? (o.at[0].toFixed(6)+', '+o.at[1].toFixed(6)) : '—';
+  var mapsUrl = o.at ? ('https://www.google.com/maps?q='+o.at[0]+','+o.at[1]) : '#';
 
   function copyBtn(text,label,cls){ var b=document.createElement('button'); b.className='btn '+(cls||'b-copy'); b.textContent=label||'Скопировать координаты';
     b.onclick=function(){ (navigator.clipboard?navigator.clipboard.writeText(text):Promise.reject()).then(ok,ok); function ok(){ b.classList.add('ok'); b.textContent='Скопировано ✓'; } }; return b; }
@@ -90,8 +90,8 @@
   if(o.leadsTo){
     var tgt=(GAME.objectives||[]).filter(function(x){return x.id===o.leadsTo;})[0];
     if(!tgt){ card.innerHTML='<div class="lead">Цель «'+o.leadsTo+'» не найдена в конфиге.</div>'; return; }
-    var tc=tgt.at[0].toFixed(6)+', '+tgt.at[1].toFixed(6);
-    var tMaps='https://www.google.com/maps?q='+tgt.at[0]+','+tgt.at[1];
+    var tc=tgt.at?(tgt.at[0].toFixed(6)+', '+tgt.at[1].toFixed(6)):'—';
+    var tMaps=tgt.at?('https://www.google.com/maps?q='+tgt.at[0]+','+tgt.at[1]):'#';
     var tName=tgt.label||(tgt.n!=null?('точка '+tgt.n):tgt.id);
     card.innerHTML='<div class="eyebrow"><span class="tick" style="background:'+sideColor+'"></span>'+sideLabel+' · '+(o.label||'Навигация')+'<span class="rule"></span></div>'
       +'<p class="lead">Идёшь к: <b>'+tName+'</b>. На карте стороны точка уже видна; кнопка ниже — маршрут в Google-картах.</p>'

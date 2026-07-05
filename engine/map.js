@@ -119,6 +119,7 @@
       objLayer.clearLayers();
       GAME.objectives.forEach(function(o){
         if(o.kind==='guide') return;                      // раздаточный QR «к старту» — маркера на карте нет
+        if(!o.at) return;                                 // координата не задана/не резолвится — на карте не рисуем
         var at=L.latLng(o.at[0],o.at[1]), color=objColor(o), captured=!!st.captures[o.id];
         var numbered=(o.kind==='checkpoint'||o.kind==='terminal');
         if(isAdmin){

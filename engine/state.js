@@ -87,11 +87,11 @@ window.State = (function(){
 
   function buildRuntime(settings, coords, points){         // new-структура → рантайм-конфиг
     settings = settings || {}; coords = coords || {}; points = points || {};
-    var cfg = { sides:settings.sides, shared:settings.shared, geo:settings.geo, mechanics:settings.mechanics };
+    var cfg = { sides:settings.sides, shared:settings.shared, geo:settings.geo, mechanics:settings.mechanics, coords:coords };
     cfg.objectives = Object.keys(points).map(function(id){
       var p = points[id], o = {}; for(var k in p) if(k!=='coord') o[k] = p[k];
       o.id = id;
-      if(p.coord && coords[p.coord]){ o.coord = p.coord; o.at = [coords[p.coord].lat, coords[p.coord].lng]; }
+      if(p.coord && coords[p.coord]){ o.coord = p.coord; o.at = [coords[p.coord].lat, coords[p.coord].lng]; }   // резолвим место для движка
       return o;
     });
     return cfg;
@@ -101,11 +101,14 @@ window.State = (function(){
     cfg = cfg || {};
     var settings = { sides:cfg.sides, shared:cfg.shared, geo:cfg.geo, mechanics:cfg.mechanics };
     var coords = {}, points = {}, byKey = {}, n = 0;
+    if(cfg.coords) for(var cid in cfg.coords){ var c=cfg.coords[cid];          // основа — существующий список координат
+      if(c && c.lat!=null){ coords[cid] = { label:c.label||cid, lat:+c.lat, lng:+c.lng }; byKey[(+c.lat).toFixed(6)+','+(+c.lng).toFixed(6)] = cid; } }
     (cfg.objectives || []).forEach(function(o){
       var p = {}; for(var k in o) if(k!=='id' && k!=='at' && k!=='coord') p[k] = o[k];
-      if(o.at && o.at[0]!=null){                            // есть место → координата (дедуп по позиции)
+      if(o.coord && coords[o.coord]) p.coord = o.coord;                        // ссылка на координату
+      else if(o.at && o.at[0]!=null){                                          // нет ссылки, но есть место → дедуп/создать
         var key = (+o.at[0]).toFixed(6) + ',' + (+o.at[1]).toFixed(6);
-        if(!byKey[key]){ byKey[key] = 'coord' + (++n); coords[byKey[key]] = { label:(o.label||o.id||byKey[key]), lat:+o.at[0], lng:+o.at[1] }; }
+        if(!byKey[key]){ var gid='coord'+(++n); while(coords[gid]) gid='coord'+(++n); byKey[key]=gid; coords[gid]={ label:(o.label||o.id||gid), lat:+o.at[0], lng:+o.at[1] }; }
         p.coord = byKey[key];
       }
       points[o.id] = p;
