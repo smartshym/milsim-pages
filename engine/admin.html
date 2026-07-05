@@ -57,17 +57,23 @@
     <span id="msg"></span>
   </div>
 
-  <h2>Настройки игры</h2>
-  <div id="settings" class="form"></div>
+  <div id="listView">
+    <h2>Настройки игры</h2>
+    <div id="settings" class="form"></div>
 
-  <h2>Координаты</h2>
-  <div id="coords"></div>
-  <button id="addCoord">+ Координата</button>
+    <h2>Координаты</h2>
+    <div id="coords"></div>
+    <button id="addCoord">+ Координата</button>
 
-  <h2>Точки</h2>
-  <div id="tbl"></div>
-  <button id="add">+ Добавить точку</button>
-  <div id="form" style="display:none"></div>
+    <h2>Точки</h2>
+    <div id="tbl"></div>
+    <button id="add">+ Добавить точку</button>
+  </div>
+
+  <div id="editView" style="display:none">
+    <div class="bar"><button class="mini" id="backBtn">← к списку</button><h2 id="editTitle" style="margin:0">Точка</h2></div>
+    <div id="form"></div>
+  </div>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -206,9 +212,13 @@
     default: return '';
   } }
 
+  function showEdit(){ el('listView').style.display='none'; el('editView').style.display='block'; window.scrollTo(0,0); }
+  function showList(){ el('editView').style.display='none'; el('listView').style.display='block'; }
   function openForm(idx){ editIdx=idx;
     var def={ kind:window.SCHEMA.KINDS[0], side:Object.keys(cfg.sides||{})[0]||'shared', coord:'' };
-    renderForm(idx===null ? def : cfg.objectives[idx], false); }
+    var o = idx===null ? def : cfg.objectives[idx];
+    el('editTitle').textContent = idx===null ? 'Новая точка' : ('Точка: '+(o.id||''));
+    showEdit(); renderForm(o, false); }
 
   // читает текущие введённые поля (какие есть для выбранного kind)
   function currentForm(){
@@ -247,7 +257,7 @@
       +'<div class="full" style="margin-top:8px"><button class="pri" id="f_save">Применить</button> <button id="f_cancel">Отмена</button></div>';
     var f=el('form'); f.style.display='grid'; f.className='form'; f.innerHTML=h;
     el('f_kind').onchange=function(){ renderForm(currentForm(), true); };   // смена kind → поля по типу + дефолты reveal/onOpen
-    el('f_save').onclick=saveForm; el('f_cancel').onclick=function(){ f.style.display='none'; };
+    el('f_save').onclick=saveForm; el('f_cancel').onclick=showList;
   }
 
   function val(id){ var e=el(id); return e?e.value.trim():''; }
@@ -263,10 +273,11 @@
     else if(oo==='flag-contest') o.onOpen={event:'flag',flag:oof,contest:true};
     if(!o.id){ alert('Нужен id'); return; }
     if(editIdx===null) cfg.objectives.push(o); else cfg.objectives[editIdx]=o;
-    el('form').style.display='none'; renderTable();
+    renderTable(); showList();
   }
 
   el('add').onclick=function(){ openForm(null); };
+  el('backBtn').onclick=showList;
   el('seed').onclick=function(){ if(confirm('Сбросить конфиг до пустого шаблона (новый прогон)?')){ cfg=defCfg(); renderAll(); } };
   el('save').onclick=function(){
     readSettings(); readCoords();
