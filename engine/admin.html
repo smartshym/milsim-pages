@@ -39,29 +39,31 @@
   textarea{width:100%;min-height:120px;font-family:var(--mono);font-size:12px;color:var(--amber-hot);
     background:rgba(0,0,0,.35);border:1px solid var(--line);padding:10px;outline:none}
   .c-coalition{color:#4d9bff}.c-insurgents{color:#ff4d4d}.c-shared{color:var(--green)}
+  .siderow{display:flex;gap:6px;align-items:center;margin:3px 0}
+  .siderow .sk{font-size:10px;color:var(--ink-dim);width:64px}
+  .siderow input[type=color]{width:38px;height:28px;padding:2px}
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1>CRM · конфигуратор</h1>
-  <div class="sub">правишь точки/мету → «Сохранить в БД» → движок (map/point) подхватывает. namespace: game/<span id="run"></span>/config</div>
+  <div class="sub">правишь настройки/точки → «Сохранить в БД» → движок (map/point) подхватывает. namespace: game/<span id="run"></span>/</div>
 
   <div class="bar">
     <button class="pri" id="save">Сохранить в БД</button>
     <button id="seed">Пустой шаблон</button>
     <a class="lnk" id="lAdmin" target="_blank">Карта · админ</a>
     <a class="lnk" href="logs.html" target="_blank">Логи</a>
-    <label style="display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--ink)"><input type="checkbox" id="tglEnemy"> чужие взятые точки на карте стороны</label>
     <span id="msg"></span>
   </div>
+
+  <h2>Настройки игры</h2>
+  <div id="settings" class="form"></div>
 
   <h2>Точки</h2>
   <div id="tbl"></div>
   <button id="add">+ Добавить точку</button>
   <div id="form" style="display:none"></div>
-
-  <h2>Мета (стороны / гео / механика) — JSON</h2>
-  <textarea id="meta"></textarea>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -83,11 +85,48 @@
 
   State.loadConfig(function(db){ cfg = db || defCfg(); if(!cfg.objectives) cfg.objectives=[]; renderAll(); });
 
-  function renderAll(){ renderTable(); renderMeta(); syncToggles(); }
-  function syncToggles(){ var t=el('tglEnemy'); if(!t) return;
-    t.checked = !(cfg.mechanics && cfg.mechanics.showEnemyCaptures===false);
-    t.onchange=function(){ cfg.mechanics=cfg.mechanics||{}; cfg.mechanics.showEnemyCaptures=t.checked; renderMeta(); }; }
-  function renderMeta(){ el('meta').value=JSON.stringify({sides:cfg.sides,shared:cfg.shared,geo:cfg.geo,mechanics:cfg.mechanics}, null, 2); }
+  function renderAll(){ renderTable(); renderSettings(); }
+
+  // --- настройки игры (нормальные поля вместо сырого JSON) ---
+  function renderSettings(){
+    var m=cfg.mechanics||{}, geo=cfg.geo||{}, L=window.LABELS.settings;
+    var sidesHtml=Object.keys(cfg.sides||{}).map(function(s){ var sd=cfg.sides[s]||{};
+      return '<div class="siderow" data-side="'+s+'"><span class="sk">'+s+'</span>'
+        +'<input class="sl" value="'+(sd.label||'')+'" placeholder="Название">'
+        +'<input class="sc" type="color" value="'+(sd.color||'#888888')+'">'
+        +'<button class="mini del sdel">×</button></div>'; }).join('');
+    el('settings').innerHTML=
+       '<div class="full"><label>'+L.sides+'</label><div id="sides">'+sidesHtml+'</div><button class="mini" id="addSide" style="margin-top:4px">+ сторона</button></div>'
+      +fld(L.captureSec,'<input id="s_cap" type="number" value="'+(m.captureSec!=null?m.captureSec:900)+'">')
+      +fld(L.posIntervalSec,'<input id="s_pos" type="number" value="'+(m.posIntervalSec!=null?m.posIntervalSec:60)+'">')
+      +fld(L.staleSec,'<input id="s_stale" type="number" value="'+(m.staleSec!=null?m.staleSec:300)+'">')
+      +fld('Общее время игры (мин)','<input id="s_gt" type="number" value="'+(m.gameTime!=null?m.gameTime:'')+'">')
+      +'<div><label>'+L.showEnemyCaptures+'</label><select id="s_enemy"><option value="1"'+(m.showEnemyCaptures!==false?' selected':'')+'>да</option><option value="0"'+(m.showEnemyCaptures===false?' selected':'')+'>нет</option></select></div>'
+      +'<details class="full advbox"><summary>'+L.geo+' (георефер.)</summary><div class="advgrid">'
+        +fld('Изображение','<input id="g_img" value="'+(geo.image||'')+'">')
+        +fld('Север','<input id="g_n" value="'+(geo.north!=null?geo.north:'')+'">')
+        +fld('Юг','<input id="g_s" value="'+(geo.south!=null?geo.south:'')+'">')
+        +fld('Восток','<input id="g_e" value="'+(geo.east!=null?geo.east:'')+'">')
+        +fld('Запад','<input id="g_w" value="'+(geo.west!=null?geo.west:'')+'">')
+        +fld('Цвет общих точек','<input id="g_shared" type="color" value="'+((cfg.shared&&cfg.shared.color)||'#57c98a')+'">')
+      +'</div></details>';
+    el('addSide').onclick=function(){ readSettings(); var k='side'+(Object.keys(cfg.sides||{}).length+1); (cfg.sides=cfg.sides||{})[k]={label:'Новая сторона',color:'#888888'}; renderSettings(); };
+    el('settings').querySelectorAll('.sdel').forEach(function(b){ b.onclick=function(){ readSettings(); delete cfg.sides[b.parentNode.getAttribute('data-side')]; renderSettings(); }; });
+  }
+  function readSettings(){
+    if(!el('s_cap')) return;                                    // ещё не отрисовано
+    var sides={};
+    el('settings').querySelectorAll('.siderow').forEach(function(r){ var k=r.getAttribute('data-side');
+      if(k) sides[k]={ label:r.querySelector('.sl').value.trim(), color:r.querySelector('.sc').value }; });
+    if(Object.keys(sides).length) cfg.sides=sides;
+    var m=cfg.mechanics||{};
+    m.captureSec=parseInt(val('s_cap'),10)||0; m.posIntervalSec=parseInt(val('s_pos'),10)||0; m.staleSec=parseInt(val('s_stale'),10)||0;
+    m.showEnemyCaptures = val('s_enemy')==='1';
+    var gt=val('s_gt'); if(gt!=='') m.gameTime=parseInt(gt,10); else delete m.gameTime;
+    cfg.mechanics=m;
+    cfg.geo={ image:val('g_img'), north:parseFloat(val('g_n')), south:parseFloat(val('g_s')), east:parseFloat(val('g_e')), west:parseFloat(val('g_w')) };
+    cfg.shared=cfg.shared||{}; cfg.shared.color=val('g_shared');
+  }
 
   function revealStr(o){ var r=o.reveal||'always', L=window.LABELS.reveal;
     if(typeof r==='string') return L[r]||r;
@@ -200,8 +239,7 @@
   el('add').onclick=function(){ openForm(null); };
   el('seed').onclick=function(){ if(confirm('Сбросить конфиг до пустого шаблона (новый прогон)?')){ cfg=defCfg(); renderAll(); } };
   el('save').onclick=function(){
-    try{ var m=JSON.parse(el('meta').value); cfg.sides=m.sides; cfg.shared=m.shared; cfg.geo=m.geo; cfg.mechanics=m.mechanics; }
-    catch(e){ alert('Мета-JSON не парсится: '+e.message); return; }
+    readSettings();
     State.saveConfig(cfg).then(function(){ msg('сохранено ✓'); }, function(e){ alert('Ошибка: '+e.message); });
   };
 })();
