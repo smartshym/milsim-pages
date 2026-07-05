@@ -45,6 +45,7 @@
       top.appendChild(lg);
     }
     var capbar=document.createElement('div'); capbar.id='capbar'; capbar.style.display='none'; top.appendChild(capbar);
+    var gameEnd=document.createElement('div'); gameEnd.id='gameend'; gameEnd.textContent='Игра окончена'; gameEnd.style.cssText='display:none;padding:10px 12px;border:1px solid #d9534f;background:rgba(138,59,44,.35);color:#ff6b6b;text-align:center;font-weight:600;font-size:14px;backdrop-filter:blur(4px)'; top.appendChild(gameEnd);
 
     var panel=document.createElement('div'); panel.id='panel'; document.body.appendChild(panel);
     if(isAdmin){
@@ -180,16 +181,24 @@
       capbar.style.display = shown ? 'block' : 'none';
     }
 
+    function renderGameEnd(st){
+      var gt=GAME.mechanics&&GAME.mechanics.gameTime; if(!gt){ gameEnd.style.display='none'; return; }   // мин
+      var times=[]; for(var k in (st.events||{})){ var e=st.events[k]; if(e&&e.time) times.push(e.time); }
+      if(!times.length){ gameEnd.style.display='none'; return; }
+      var start=Math.min.apply(null,times);                                  // старт игры = первое событие
+      gameEnd.style.display = (State.serverNow()-start > gt*60000) ? 'block' : 'none';
+    }
     var STATE = State.subscribe(function(st, key){
       if(!key || key==='captures' || key==='flags') renderObjectives(st);
       if(!key || key==='live' || key==='tracks') renderLive(st);
       if(!key || key==='contests') renderCap(st);
+      if(!key || key==='events') renderGameEnd(st);
     });
-    setInterval(function(){ renderCap(STATE); }, 1000);
+    setInterval(function(){ renderCap(STATE); renderGameEnd(STATE); }, 1000);
 
-    var me=null, acc=null;
+    var me=null, acc=null, lastAcc=null;
     if(navigator.geolocation){
-      navigator.geolocation.watchPosition(function(p){ var c=p.coords; last=L.latLng(c.latitude,c.longitude);
+      navigator.geolocation.watchPosition(function(p){ var c=p.coords; last=L.latLng(c.latitude,c.longitude); lastAcc=c.accuracy;
         if(!me){ me=L.marker(last,{icon:L.divIcon({className:'',html:'<div class="me"></div>',iconSize:[16,16],iconAnchor:[8,8]})}).addTo(map);
                  acc=L.circle(last,{radius:c.accuracy,color:'#ffc24d',weight:1,fillOpacity:.06}).addTo(map); if(isSide) map.setView(last,16); }
         else { me.setLatLng(last); acc.setLatLng(last).setRadius(c.accuracy); }
@@ -198,9 +207,22 @@
     } else { set('status','геолокация не поддерживается'); }
 
     if(isSide){
-      var iv=GAME.mechanics.posIntervalSec*1000;
-      setInterval(function(){ if(last) State.reportPosition(VIEW,last.lat,last.lng); }, iv);
-      setTimeout(function(){ if(last) State.reportPosition(VIEW,last.lat,last.lng); }, 5000);
+      var iv=GAME.mechanics.posIntervalSec*1000, lastRep=null, lastRepT=0;
+      function tryReport(){ if(!last) return;
+        if(lastAcc!=null && lastAcc>100) return;                             // очень плохая точность — пропуск
+        var t=Date.now();
+        if(lastRep){ var d=map.distance(lastRep,last), dt=(t-lastRepT)/1000;
+          if(dt>0 && d>50 && d/dt>20) return; }                             // нереальный скачок (>20 м/с) — GPS-выброс
+        State.reportPosition(VIEW,last.lat,last.lng); lastRep=last; lastRepT=t;
+      }
+      setInterval(tryReport, iv);
+      setTimeout(tryReport, 5000);
+      // экран не гаснет, пока карта открыта → трек не рвётся (главная проблема из аналитики)
+      if('wakeLock' in navigator){ var wl=null;
+        var reqWake=function(){ navigator.wakeLock.request('screen').then(function(l){ wl=l; }, function(){}); };
+        reqWake();
+        document.addEventListener('visibilitychange', function(){ if(document.visibilityState==='visible') reqWake(); });
+      }
     }
   }
 })();
