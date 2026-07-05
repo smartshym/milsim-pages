@@ -80,10 +80,52 @@ window.State = (function(){
       .map(function(k){ return root.child(k).remove(); }));
   }
 
-  // --- конфиг игры в БД (game/<run>/config): редактируется из admin.html ---
-  function loadConfig(cb){ root.child('config').once('value').then(function(s){ cb(s.val()); }, function(){ cb(null); }); }
-  function saveConfig(cfg){ return root.child('config').set(cfg); }
-  function watchConfig(cb){ root.child('config').on('value', function(s){ cb(s.val()); }); }
+  // --- конфиг игры в БД ---
+  // Новая структура: settings + coords (список координат) + points (логика, ссылка coord).
+  // Старая: единый config {sides,shared,geo,mechanics,objectives}. Адаптер читает/пишет обе,
+  // а движок и админка работают с «рантайм»-формой (как старый config).
+
+  function buildRuntime(settings, coords, points){         // new-структура → рантайм-конфиг
+    settings = settings || {}; coords = coords || {}; points = points || {};
+    var cfg = { sides:settings.sides, shared:settings.shared, geo:settings.geo, mechanics:settings.mechanics };
+    cfg.objectives = Object.keys(points).map(function(id){
+      var p = points[id], o = {}; for(var k in p) if(k!=='coord') o[k] = p[k];
+      o.id = id;
+      if(p.coord && coords[p.coord]){ o.coord = p.coord; o.at = [coords[p.coord].lat, coords[p.coord].lng]; }
+      return o;
+    });
+    return cfg;
+  }
+
+  function toStructure(cfg){                                // рантайм-конфиг → new-структура
+    cfg = cfg || {};
+    var settings = { sides:cfg.sides, shared:cfg.shared, geo:cfg.geo, mechanics:cfg.mechanics };
+    var coords = {}, points = {}, byKey = {}, n = 0;
+    (cfg.objectives || []).forEach(function(o){
+      var p = {}; for(var k in o) if(k!=='id' && k!=='at' && k!=='coord') p[k] = o[k];
+      if(o.at && o.at[0]!=null){                            // есть место → координата (дедуп по позиции)
+        var key = (+o.at[0]).toFixed(6) + ',' + (+o.at[1]).toFixed(6);
+        if(!byKey[key]){ byKey[key] = 'coord' + (++n); coords[byKey[key]] = { label:(o.label||o.id||byKey[key]), lat:+o.at[0], lng:+o.at[1] }; }
+        p.coord = byKey[key];
+      }
+      points[o.id] = p;
+    });
+    return { settings:settings, coords:coords, points:points };
+  }
+
+  function loadConfig(cb){
+    Promise.all([ root.child('settings').once('value'), root.child('coords').once('value'), root.child('points').once('value') ])
+      .then(function(r){
+        var settings = r[0].val(), coords = r[1].val(), points = r[2].val();
+        if(settings || points) cb(buildRuntime(settings, coords, points));
+        else root.child('config').once('value').then(function(s){ cb(s.val()); }, function(){ cb(null); });   // фолбэк: старая структура
+      }, function(){ cb(null); });
+  }
+  function saveConfig(cfg){
+    var st = toStructure(cfg);
+    return Promise.all([ root.child('settings').set(st.settings), root.child('coords').set(st.coords), root.child('points').set(st.points) ]);
+  }
+  function watchConfig(cb){ root.child('config').on('value', function(s){ cb(s.val()); }); }   // legacy, не используется
 
   return { init:init, deviceId:deviceId, serverNow:serverNow,
            emitCapture:emitCapture, emitFlag:emitFlag, reportPosition:reportPosition,
