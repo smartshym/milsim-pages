@@ -79,6 +79,7 @@ window.State = (function(){
     return Promise.all(['captures','flags','contests','live','tracks','events']
       .map(function(k){ return root.child(k).remove(); }));
   }
+  function resetCapture(id){ return root.child('captures/' + id).remove(); }   // сброс взятия одной точки (ошибочная активация)
 
   // --- конфиг игры в БД ---
   // Новая структура: settings + coords (список координат) + points (логика, ссылка coord).
@@ -132,6 +133,6 @@ window.State = (function(){
 
   return { init:init, deviceId:deviceId, serverNow:serverNow,
            emitCapture:emitCapture, emitFlag:emitFlag, reportPosition:reportPosition,
-           subscribe:subscribe, wipe:wipe, resetState:resetState,
+           subscribe:subscribe, wipe:wipe, resetState:resetState, resetCapture:resetCapture,
            loadConfig:loadConfig, saveConfig:saveConfig, watchConfig:watchConfig };
 })();

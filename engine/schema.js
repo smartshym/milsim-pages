@@ -16,7 +16,8 @@ window.SCHEMA = {
   // enum'ы правил (общие id/kind/side/lat/lng есть всегда)
   ENUMS: {
     reveal: ['always', 'captured', 'flag-side', 'flag-any'],
-    onOpen: ['none', 'capture', 'flag', 'flag-contest']
+    onOpen: ['none', 'capture', 'flag', 'flag-contest'],
+    activation: ['open', 'proximity']            // как берётся точка: по открытию страницы / по подходу в радиус
   },
 
   // какие поля показывать в форме под конкретный kind
@@ -52,7 +53,7 @@ window.SCHEMA = {
     geo: { image: '../sandtorch/Boloto_v1.05.jpg',        // дефолт поля — поменяй под свой полигон
            north: 43.81687355441687, south: 43.78795236649337,
            east: 77.07101927537143, west: 77.04279873867411 },
-    mechanics: { captureSec: 900, posIntervalSec: 60, staleSec: 300, showEnemyCaptures: true },
+    mechanics: { captureSec: 900, posIntervalSec: 60, staleSec: 300, showEnemyCaptures: true, gameZone: 25, showZones: false },
     coords: {},
     objectives: []
   }

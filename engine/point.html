@@ -82,7 +82,7 @@
 
   // ---- emit события открытия ----
   if(o.onOpen){
-    if(o.onOpen.event==='capture') State.emitCapture(o.id, side);
+    if(o.onOpen.event==='capture'){ if(o.activation!=='proximity') State.emitCapture(o.id, side); }   // proximity — взятие по подходу (карта), страница не пишет
     else if(o.onOpen.event==='flag' && side) State.emitFlag(side, o.onOpen.flag, !!o.onOpen.contest);
   }
 
@@ -159,6 +159,14 @@
     }
     card.querySelector('#go').onclick=check;
     boxes[0].focus();
+  }
+
+  // кнопка «Сбросить взятие» — для точек-захватов (ошибочная активация / режим по подходу)
+  if(o.onOpen && o.onOpen.event==='capture'){
+    var rb=document.createElement('button'); rb.className='btn'; rb.style.cssText='margin-top:16px;border-color:var(--rust);color:#c66';
+    rb.textContent='Сбросить взятие';
+    rb.onclick=function(){ if(confirm('Сбросить взятие этой точки?')) State.resetCapture(o.id).then(function(){ rb.textContent='Сброшено ✓'; rb.disabled=true; }, function(e){ alert('Ошибка: '+e.message); }); };
+    card.appendChild(rb);
   }
   }
 })();

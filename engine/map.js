@@ -118,6 +118,9 @@
 
     function renderObjectives(st){
       objLayer.clearLayers();
+      if(GAME.mechanics&&GAME.mechanics.showZones) GAME.objectives.forEach(function(o){   // круги игровых зон (тумблер) — для точек «по подходу»
+        if(o.activation==='proximity' && o.at) L.circle([o.at[0],o.at[1]],{radius:(o.gameZone!=null?o.gameZone:(GAME.mechanics.gameZone||25)),color:objColor(o),weight:1,fill:true,fillOpacity:.05,dashArray:'4,4'}).addTo(objLayer);
+      });
       GAME.objectives.forEach(function(o){
         if(o.kind==='guide') return;                      // раздаточный QR «к старту» — маркера на карте нет
         if(!o.at) return;                                 // координата не задана/не резолвится — на карте не рисуем
@@ -198,13 +201,25 @@
     });
     setInterval(function(){ renderCap(STATE); renderGameEnd(STATE); }, 1000);
 
+    var proxHits={};
+    function checkProximity(){                              // захват по подходу (режим proximity): 2 фикса подряд в зоне
+      if(!last || !isSide || !STATE) return;
+      var defZone=(GAME.mechanics&&GAME.mechanics.gameZone)||25;
+      GAME.objectives.forEach(function(o){
+        if(o.activation!=='proximity' || o.side!==VIEW || !o.at) return;
+        if(STATE.captures && STATE.captures[o.id]){ proxHits[o.id]=0; return; }   // уже взята
+        var d=map.distance(last, L.latLng(o.at[0],o.at[1])), zone=(o.gameZone!=null?o.gameZone:defZone);
+        if(d - (lastAcc||0) <= zone){ proxHits[o.id]=(proxHits[o.id]||0)+1; if(proxHits[o.id]>=2) State.emitCapture(o.id, VIEW); }
+        else proxHits[o.id]=0;
+      });
+    }
     var me=null, acc=null, lastAcc=null;
     if(navigator.geolocation){
       navigator.geolocation.watchPosition(function(p){ var c=p.coords; last=L.latLng(c.latitude,c.longitude); lastAcc=c.accuracy;
         if(!me){ me=L.marker(last,{icon:L.divIcon({className:'',html:'<div class="me"></div>',iconSize:[16,16],iconAnchor:[8,8]})}).addTo(map);
                  acc=L.circle(last,{radius:c.accuracy,color:'#ffc24d',weight:1,fillOpacity:.06}).addTo(map); if(isSide) map.setView(last,16); }
         else { me.setLatLng(last); acc.setLatLng(last).setRadius(c.accuracy); }
-        set('acc',Math.round(c.accuracy)+' м'); set('status','на связи'); updateLine();
+        set('acc',Math.round(c.accuracy)+' м'); set('status','на связи'); updateLine(); checkProximity();
       }, function(e){ set('status','GPS: '+e.message); }, {enableHighAccuracy:true,maximumAge:1000,timeout:15000});
     } else { set('status','геолокация не поддерживается'); }
 
