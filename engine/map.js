@@ -34,7 +34,14 @@
     var map=L.map('map',{zoomSnap:0.25,maxZoom:20,rotate:true,touchRotate:true,rotateControl:{closeOnZeroBearing:false}});
     var gsat=L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',{subdomains:['mt0','mt1','mt2','mt3'],maxZoom:21}).addTo(map);
     var drawn=L.imageOverlay(b.image,bounds);
-    map.fitBounds(bounds); map.setMaxBounds(L.latLngBounds(bounds).pad(0.3));
+    map.fitBounds(bounds);
+    // кнопка «к точкам» — вернуть вид на игровую область (панорамирование свободное, без жёстких границ)
+    var recenter=L.control({position:'topleft'});
+    recenter.onAdd=function(){ var b=L.DomUtil.create('div','leaflet-bar');
+      b.innerHTML='<a href="#" title="К точкам" style="font-size:18px;font-weight:700;text-align:center">◎</a>';
+      L.DomEvent.on(b,'click',function(e){ L.DomEvent.stop(e); map.fitBounds(bounds); });
+      return b; };
+    recenter.addTo(map);
     L.control.layers({'Спутник':gsat,'Рисованная карта':drawn},null,{collapsed:true}).addTo(map);
 
     var top=document.createElement('div'); top.id='top'; if(isAdmin) top.className='adm'; document.body.appendChild(top);
