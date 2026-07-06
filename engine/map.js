@@ -31,7 +31,7 @@
     function mmss(s){ s=Math.max(0,Math.floor(s)); var m=Math.floor(s/60),ss=s%60; return (m<10?'0':'')+m+':'+(ss<10?'0':'')+ss; }
 
     var b=GAME.geo, bounds=[[b.south,b.west],[b.north,b.east]];
-    var map=L.map('map',{zoomSnap:0.25,maxZoom:20});
+    var map=L.map('map',{zoomSnap:0.25,maxZoom:20,rotate:true,touchRotate:true,rotateControl:{closeOnZeroBearing:false}});
     var gsat=L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',{subdomains:['mt0','mt1','mt2','mt3'],maxZoom:21}).addTo(map);
     var drawn=L.imageOverlay(b.image,bounds);
     map.fitBounds(bounds); map.setMaxBounds(L.latLngBounds(bounds).pad(0.3));
