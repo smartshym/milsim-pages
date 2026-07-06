@@ -37,7 +37,7 @@
     map.fitBounds(bounds); map.setMaxBounds(L.latLngBounds(bounds).pad(0.3));
     L.control.layers({'Спутник':gsat,'Рисованная карта':drawn},null,{collapsed:true}).addTo(map);
 
-    var top=document.createElement('div'); top.id='top'; document.body.appendChild(top);
+    var top=document.createElement('div'); top.id='top'; if(isAdmin) top.className='adm'; document.body.appendChild(top);
     if(isSide){
       var lg=document.createElement('div'); lg.className='legend';
       lg.innerHTML=Object.keys(GAME.sides).map(function(s){ return '<span><i class="d" style="background:'+GAME.sides[s].color+'"></i>'+GAME.sides[s].label+'</span>'; }).join('')
