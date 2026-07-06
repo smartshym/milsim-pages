@@ -50,7 +50,7 @@ window.SCHEMA = {
       side2: { label: 'Сторона 2', color: '#ff4d4d' }
     },
     shared: { color: '#57c98a' },
-    geo: { image: '../sandtorch/Boloto_v1.05.jpg',        // дефолт поля — поменяй под свой полигон
+    geo: { image: 'Boloto_v1.05.jpg',        // дефолт поля — поменяй под свой полигон
            north: 43.81687355441687, south: 43.78795236649337,
            east: 77.07101927537143, west: 77.04279873867411 },
     mechanics: { captureSec: 900, posIntervalSec: 60, staleSec: 300, showEnemyCaptures: true, gameZone: 25, showZones: false },
