@@ -7,7 +7,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--mono);overflow:hidd
 #map{position:absolute;inset:0;background:var(--bg)}
 .leaflet-container{background:var(--bg)}
 
-#top{position:absolute;top:10px;left:10px;right:10px;z-index:1000;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+#top{position:absolute;top:10px;left:50px;right:10px;z-index:1000;display:flex;flex-direction:column;gap:8px;pointer-events:none}  /* left:50px — освобождаем левую колонку под кнопки карты (зум/компас/◎) */
 #top>*{pointer-events:auto}
 #top.adm{top:auto;bottom:10px}   /* админ: баннеры (таймер/конец) вниз, чтобы не наезжать на панель top-left */
 .legend{background:var(--panel);border:1px solid var(--line);padding:8px 12px;backdrop-filter:blur(4px);
@@ -21,7 +21,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--mono);overflow:hidd
 
 #panel{position:absolute;left:10px;right:10px;bottom:10px;z-index:1000;background:var(--panel);border:1px solid var(--line);
   padding:11px 14px;backdrop-filter:blur(4px);font-size:12px;display:grid;grid-template-columns:repeat(2,1fr);gap:3px 16px}
-#panel.admin{right:auto;left:10px;top:10px;bottom:auto;max-width:260px;display:block}
+#panel.admin{left:auto;right:10px;top:10px;bottom:auto;max-width:260px;display:block}   /* вправо — левую колонку отдаём кнопкам карты */
 #panel .k{color:var(--ink-dim);text-transform:uppercase;letter-spacing:.12em;font-size:10px}
 #panel .v{color:var(--amber-hot);font-weight:600}
 #panel .full{grid-column:1/-1}
