@@ -5,7 +5,7 @@
 // ============================================================================
 (function(){
   var SB = window.GAME;                       // config.js = только firebase + run
-  var VIEW = (location.search.match(/view=([a-z]+)/) || [])[1];
+  var VIEW = (location.search.match(/view=([a-z0-9_-]+)/) || [])[1];   // ключ стороны может содержать цифры (side1/side2/…)
 
   State.init(SB);
   State.loadConfig(function(db){

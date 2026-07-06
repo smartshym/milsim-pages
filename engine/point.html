@@ -58,7 +58,7 @@
 (function(){
   var SB=window.GAME, card=document.getElementById('card');
   var id=(location.search.match(/id=([a-z0-9_-]+)/i)||[])[1];   // id может содержать дефис (напр. start-coalition)
-  var sideParam=(location.search.match(/side=([a-z]+)/)||[])[1];
+  var sideParam=(location.search.match(/side=([a-z0-9_-]+)/)||[])[1];   // ключ стороны может содержать цифры (side1/side2/…)
   State.init(SB);
   State.loadConfig(function(db){
     // база = firebase/run (config.js) ⊕ пустой валидный шаблон (schema.BLANK); БД перекрывает игровые ключи
@@ -132,7 +132,8 @@
   // ---- ТЕРМИНАЛ ----
   else if(o.kind==='terminal'){
     var allDigits=(o.code||[]).every(function(c){ return /^[0-9]+$/.test(''+c); });   // код из цифр (координаты) → числовой ввод
-    var inputs=''; for(var k=0;k<o.code.length;k++) inputs+='<input maxlength="'+(''+o.code[k]).length+'" inputmode="'+(allDigits?'numeric':'latin')+'" autocomplete="off">';
+    var code=o.code||[];   // терминал без code — не падаем (пустой ввод)
+    var inputs=''; for(var k=0;k<code.length;k++) inputs+='<input maxlength="'+(''+code[k]).length+'" inputmode="'+(allDigits?'numeric':'latin')+'" autocomplete="off">';
     card.innerHTML='<div class="eyebrow"><span class="tick"></span>'+sideLabel+' · Дешифровка<span class="rule"></span></div>'
       +'<div class="point"><span class="lbl">Пункт</span><span class="num">'+o.n+'</span></div>'
       +'<p class="lead">Введи фрагменты по порядку — как собирал на точках.</p>'
@@ -152,7 +153,7 @@
       // показать координаты раскрытого объекта (storage)
       var tgt=(o.reveals ? GAME.objectives.filter(function(x){return x.id===o.reveals;})[0] : GAME.objectives.filter(function(x){return x.kind==='storage';})[0]);
       var box=card.querySelector('#ok'); box.className='';
-      if(tgt){ var cs=tgt.at[0].toFixed(6)+', '+tgt.at[1].toFixed(6);
+      if(tgt && tgt.at){ var cs=tgt.at[0].toFixed(6)+', '+tgt.at[1].toFixed(6);
         box.innerHTML=readout('Пункт хранения',cs)+'<div class="actions">'+sideMapBtn(side)+'<a class="btn b-gmap" href="https://www.google.com/maps?q='+tgt.at[0]+','+tgt.at[1]+'" target="_blank" rel="noopener">Открыть Google-карту</a></div>';
         box.querySelector('.actions').prepend(copyBtn(cs)); }
       card.querySelector('#code').classList.add('hidden'); card.querySelector('#go').classList.add('hidden');

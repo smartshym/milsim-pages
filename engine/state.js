@@ -129,10 +129,9 @@ window.State = (function(){
     var st = toStructure(cfg);
     return Promise.all([ root.child('settings').set(st.settings), root.child('coords').set(st.coords), root.child('points').set(st.points) ]);
   }
-  function watchConfig(cb){ root.child('config').on('value', function(s){ cb(s.val()); }); }   // legacy, не используется
 
   return { init:init, deviceId:deviceId, serverNow:serverNow,
            emitCapture:emitCapture, emitFlag:emitFlag, reportPosition:reportPosition,
            subscribe:subscribe, wipe:wipe, resetState:resetState, resetCapture:resetCapture,
-           loadConfig:loadConfig, saveConfig:saveConfig, watchConfig:watchConfig };
+           loadConfig:loadConfig, saveConfig:saveConfig };
 })();

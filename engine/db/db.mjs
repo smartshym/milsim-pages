@@ -1,17 +1,17 @@
 // ============================================================================
 //  db.mjs — экспорт/импорт Firebase RTDB через REST (test-mode: без токена).
 //  Запуск (из папки engine/db):
-//    node db.mjs pull [node=config] [file]    # БД  → dumps/<node>.json
-//    node db.mjs push [node=config] [file]     # dumps/<node>.json → БД (PUT — замена узла)
+//    node db.mjs pull <node> [file]            # БД  → dumps/<node>.json
+//    node db.mjs push <node> [file]            # dumps/<node>.json → БД (PUT — замена узла)
 //    node db.mjs backup [метка]                # ВЕСЬ прогон → dumps/backups/<метка>-<время>.json
 //    node db.mjs restore <файл>                # ВЕСЬ прогон ← файл (PUT — замена состояния)
 //    node db.mjs wipe [node=.]                 # DELETE узла (обнулить прогон/конфиг)
-//    node — подпуть под game/<run>. '.' = весь прогон. Примеры: config | . | flags
+//    node — подпуть под game/<run>. '.' = весь прогон. Конфиг: settings | coords | points. Ещё: flags | captures | …
 //
 //  Миграция (безопасно, с бэкапом):
-//    node db.mjs pull config            # выгрузить конфиг
-//    node migrations/<миграция>.mjs     # преобразовать dumps/config.json
-//    node db.mjs push config            # залить обратно
+//    node db.mjs pull points            # выгрузить узел (points/settings/coords)
+//    node migrations/<миграция>.mjs     # преобразовать dumps/points.json
+//    node db.mjs push points            # залить обратно
 //  Снять/вернуть состояние прогона (config + captures + events + …):
 //    node db.mjs backup preigra         # снимок перед игрой
 //    node db.mjs restore dumps/backups/preigra-2026-07-03T....json
@@ -53,11 +53,11 @@ const [cmd, a1, a2] = process.argv.slice(2);
 const dumpName = (node) => (node === '.' || node === '' ? 'run' : node.replace(/\//g, '_')) + '.json';
 
 if (cmd === 'pull') {
-  const node = a1 || 'config';
-  await pull(node, a2 || path.join(DUMPS, dumpName(node)));
+  if (!a1) throw new Error('pull: укажи узел — settings | coords | points | . | flags | …');
+  await pull(a1, a2 || path.join(DUMPS, dumpName(a1)));
 } else if (cmd === 'push') {
-  const node = a1 || 'config';
-  await push(node, a2 || path.join(DUMPS, dumpName(node)));
+  if (!a1) throw new Error('push: укажи узел — settings | coords | points | .');
+  await push(a1, a2 || path.join(DUMPS, dumpName(a1)));
 } else if (cmd === 'backup') {
   const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);   // 2026-07-03T21-40-05
   const fileName = (a1 ? a1 + '-' : '') + stamp + '.json';
@@ -73,7 +73,7 @@ if (cmd === 'pull') {
   console.log('wiped   %s  (сделай backup заранее — восстановление через restore)', label);
 } else {
   console.log('usage:\n'
-    + '  node db.mjs pull|push [node=config] [file]   (node: config | . | flags | …)\n'
+    + '  node db.mjs pull|push <node> [file]          (node: settings | coords | points | . | flags | …)\n'
     + '  node db.mjs backup [метка]                   # весь прогон → dumps/backups/\n'
     + '  node db.mjs restore <файл>                   # весь прогон ← файл (замена)\n'
     + '  node db.mjs wipe [node=.]                     # удалить узел (обнулить прогон)');
