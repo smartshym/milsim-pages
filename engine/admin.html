@@ -236,6 +236,11 @@
       opts+='<option value="'+o.id+'"'+(o.id===sel?' selected':'')+'>'+o.id+' · '+kindL+(o.label?' · '+o.label:'')+'</option>'; });
     if(sel && !found) opts+='<option value="'+sel+'" selected>'+sel+' (нет в списке)</option>';   // не терять уже заданное значение
     return opts; }
+  // подсказки имён флагов (datalist): все флаги из точек + типовые из DEFAULTS. Поле остаётся вводимым (можно создать новый).
+  function flagOpts(){ var set={}, add=function(f){ if(f) set[f]=1; };
+    (cfg.objectives||[]).forEach(function(o){ add(o.reveal&&o.reveal.flag); add(o.onOpen&&o.onOpen.flag); add(o.onSuccess&&o.onSuccess.flag); });
+    var D=window.SCHEMA.DEFAULTS||{}; Object.keys(D).forEach(function(k){ add(D[k].rvflag); add(D[k].ooflag); });
+    return Object.keys(set).sort().map(function(f){ return '<option value="'+f+'">'; }).join(''); }
   function coordCell(o){ var c=(o.coord&&cfg.coords)?cfg.coords[o.coord]:null;
     if(c) return (c.label||o.coord)+' <span style="color:var(--ink-dim)">'+(+c.lat).toFixed(5)+', '+(+c.lng).toFixed(5)+'</span>';
     return o.at?o.at[0].toFixed(5)+', '+o.at[1].toFixed(5):'—'; }
@@ -252,7 +257,7 @@
     case 'decoy':     return fld(L.decoy,'<select id="f_decoy"><option value="">нет</option><option value="1" '+(o.decoy?'selected':'')+'>да</option></select>');
     case 'code':      return fld(L.code,'<input id="f_code" value="'+((o.code||[]).join(','))+'">');
     case 'reveals':   return fld(L.reveals,'<select id="f_reveals">'+pointOpts(o.reveals)+'</select>');
-    case 'onSuccess': return fld(L.onSuccess,'<input id="f_sf" value="'+((o.onSuccess&&o.onSuccess.flag)||'')+'">');
+    case 'onSuccess': return fld(L.onSuccess,'<input id="f_sf" list="flaglist" value="'+((o.onSuccess&&o.onSuccess.flag)||'')+'">');
     case 'leadsTo':   return fld(L.leadsTo,'<select id="f_leadsTo">'+pointOpts(o.leadsTo)+'</select>');
     default: return '';
   } }
@@ -297,10 +302,11 @@
       +fld(L.fields.coord,'<select id="f_coord">'+coordOpts(o.coord)+'</select>');
     (window.SCHEMA.FIELDS[k]||[]).forEach(function(fn){ h+=fieldHtml(fn,o); });   // поля под тип — из schema.FIELDS
     h+='<details class="full advbox"><summary>Расширенное · показ / событие (по умолчанию из типа)</summary><div class="advgrid">'
+      +'<datalist id="flaglist">'+flagOpts()+'</datalist>'
       +fld(L.fields.reveal,'<select id="f_rv">'+opt(window.SCHEMA.ENUMS.reveal,rv,L.reveal)+'</select>')
-      +fld(L.fields.rvflag,'<input id="f_rvflag" value="'+rvFlag+'">')
+      +fld(L.fields.rvflag,'<input id="f_rvflag" list="flaglist" value="'+rvFlag+'">')
       +fld(L.fields.onOpen,'<select id="f_oo">'+opt(window.SCHEMA.ENUMS.onOpen,oo,L.onOpen)+'</select>')
-      +fld(L.fields.ooflag,'<input id="f_ooflag" value="'+ooFlag+'">')
+      +fld(L.fields.ooflag,'<input id="f_ooflag" list="flaglist" value="'+ooFlag+'">')
       +fld(L.fields.captureSec+' — если пусто, берётся «по умолчанию»','<input id="f_capsec" type="number" value="'+(o.captureSec!=null?o.captureSec:'')+'">')
       +fld(L.fields.activation,'<select id="f_act">'+opt(window.SCHEMA.ENUMS.activation,(o.activation||'open'),L.activation)+'</select>')
       +fld(L.fields.gameZone+' — если пусто, «по умолчанию»','<input id="f_gz" type="number" value="'+(o.gameZone!=null?o.gameZone:'')+'">')
