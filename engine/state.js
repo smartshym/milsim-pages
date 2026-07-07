@@ -130,8 +130,13 @@ window.State = (function(){
     return Promise.all([ root.child('settings').set(st.settings), root.child('coords').set(st.coords), root.child('points').set(st.points) ]);
   }
 
+  // --- справочник полигонов: ГЛОБАЛЬНЫЙ узел /polygons (вне game/<run>/) ---
+  // Живёт отдельно от конфига прогона: сброс/вайп прогона его не трогает, общий для всех run'ов.
+  function loadPolygons(cb){ db.ref('polygons').once('value').then(function(s){ cb(s.val()); }, function(){ cb(null); }); }
+  function savePolygons(polys){ return db.ref('polygons').set(polys || {}); }
+
   return { init:init, deviceId:deviceId, serverNow:serverNow,
            emitCapture:emitCapture, emitFlag:emitFlag, reportPosition:reportPosition,
            subscribe:subscribe, wipe:wipe, resetState:resetState, resetCapture:resetCapture,
-           loadConfig:loadConfig, saveConfig:saveConfig };
+           loadConfig:loadConfig, saveConfig:saveConfig, loadPolygons:loadPolygons, savePolygons:savePolygons };
 })();

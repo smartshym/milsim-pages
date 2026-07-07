@@ -65,6 +65,10 @@
     <div id="coords"></div>
     <button id="addCoord">+ Координата</button>
 
+    <h2>Полигоны <span style="font-size:9px;color:var(--ink-dim);letter-spacing:.08em">— общий справочник, сброс игры не трогает</span></h2>
+    <div id="polys"></div>
+    <button id="addPoly">+ Полигон</button>
+
     <h2>Точки</h2>
     <div id="tbl"></div>
     <button id="add">+ Добавить точку</button>
@@ -89,13 +93,14 @@
   document.getElementById('lAdmin').href='map.html?view=admin';
 
   function defCfg(){ return JSON.parse(JSON.stringify(window.SCHEMA.BLANK)); }   // «Загрузить дефолт» = пустой шаблон нового прогона
-  var cfg=null, editIdx=null;
+  var cfg=null, editIdx=null, polygons={};   // polygons — глобальный справочник, грузится/пишется отдельно от cfg
   function el(id){ return document.getElementById(id); }
   function msg(t){ el('msg').textContent=t; setTimeout(function(){ el('msg').textContent=''; },2500); }
 
   State.loadConfig(function(db){ cfg = db || defCfg(); if(!cfg.objectives) cfg.objectives=[]; renderAll(); });
+  State.loadPolygons(function(p){ polygons = p || JSON.parse(JSON.stringify(window.SCHEMA.POLYGONS)); renderPolygons(); if(cfg) renderSettings(); });   // /polygons пуст → дефолт-сид из схемы
 
-  function renderAll(){ renderTable(); renderSettings(); renderCoords(); }
+  function renderAll(){ renderTable(); renderSettings(); renderCoords(); renderPolygons(); }
 
   // --- настройки игры (нормальные поля вместо сырого JSON) ---
   function renderSettings(){
@@ -117,6 +122,7 @@
         +fld(L.staleSec,'<input id="s_stale" type="number" value="'+(m.staleSec!=null?m.staleSec:300)+'">')
       +'</div></details>'
       +'<details class="full advbox"><summary>'+L.geo+' (георефер.)</summary><div class="advgrid">'
+        +fld('Полигон (пресет) → заполнит поля ниже','<select id="g_poly"><option value="">— выбрать —</option>'+Object.keys(polygons||{}).map(function(id){ var p=polygons[id]||{}; return '<option value="'+id+'">'+(p.label||id)+'</option>'; }).join('')+'</select>')
         +fld('Изображение','<input id="g_img" value="'+(geo.image||'')+'">')
         +fld('Север','<input id="g_n" value="'+(geo.north!=null?geo.north:'')+'">')
         +fld('Юг','<input id="g_s" value="'+(geo.south!=null?geo.south:'')+'">')
@@ -126,6 +132,8 @@
       +'</div></details>';
     el('addSide').onclick=function(){ readSettings(); var k='side'+(Object.keys(cfg.sides||{}).length+1); (cfg.sides=cfg.sides||{})[k]={label:'Новая сторона',color:'#888888'}; renderSettings(); };
     el('settings').querySelectorAll('.sdel').forEach(function(b){ b.onclick=function(){ readSettings(); delete cfg.sides[b.parentNode.getAttribute('data-side')]; renderSettings(); }; });
+    if(el('g_poly')) el('g_poly').onchange=function(){ var p=(polygons||{})[el('g_poly').value]; if(!p) return;   // выбор полигона → подставить в geo-поля (geo хранится в settings прогона)
+      el('g_img').value=p.image||''; el('g_n').value=p.north!=null?p.north:''; el('g_s').value=p.south!=null?p.south:''; el('g_e').value=p.east!=null?p.east:''; el('g_w').value=p.west!=null?p.west:''; };
   }
   function readSettings(){
     if(!el('s_cap')) return;                                    // ещё не отрисовано
@@ -139,7 +147,7 @@
     m.gameZone=parseInt(val('s_gz'),10)||25; m.showZones = val('s_zones')==='1';
     var gt=val('s_gt'); if(gt!=='') m.gameTime=parseInt(gt,10); else delete m.gameTime;
     cfg.mechanics=m;
-    cfg.geo={ image:val('g_img'), north:parseFloat(val('g_n')), south:parseFloat(val('g_s')), east:parseFloat(val('g_e')), west:parseFloat(val('g_w')) };
+    cfg.geo={ image:val('g_img'), north:num(val('g_n')), south:num(val('g_s')), east:num(val('g_e')), west:num(val('g_w')) };
     cfg.shared=cfg.shared||{}; cfg.shared.color=val('g_shared');
   }
 
@@ -162,8 +170,33 @@
   }
   function readCoords(){ var cs={};
     if(el('coords')) el('coords').querySelectorAll('.coordrow').forEach(function(r){ var id=r.getAttribute('data-coord');
-      cs[id]={ label:r.querySelector('.cl').value.trim(), lat:parseFloat(r.querySelector('.clat').value), lng:parseFloat(r.querySelector('.clng').value) }; });
+      cs[id]={ label:r.querySelector('.cl').value.trim(), lat:num(r.querySelector('.clat').value), lng:num(r.querySelector('.clng').value) }; });
     cfg.coords=cs;
+  }
+
+  // --- справочник полигонов (глобальный /polygons; переживает сброс/вайп прогона) ---
+  function newPolyId(){ var n=0, ps=polygons||{}; do{ n++; }while(ps['poly'+n]); return 'poly'+n; }
+  function renderPolygons(){
+    var ps=polygons||{};
+    var rows=Object.keys(ps).map(function(id){ var p=ps[id]||{};
+      return '<div class="siderow polyrow" data-poly="'+id+'"><span class="sk">'+id+'</span>'
+        +'<input class="pl" value="'+(p.label||'')+'" placeholder="Название" style="width:130px">'
+        +'<input class="pimg" value="'+(p.image||'')+'" placeholder="Картинка (файл/URL)" style="width:170px">'
+        +'<input class="pnorth" value="'+(p.north!=null?p.north:'')+'" placeholder="Север" style="width:96px">'
+        +'<input class="psouth" value="'+(p.south!=null?p.south:'')+'" placeholder="Юг" style="width:96px">'
+        +'<input class="peast" value="'+(p.east!=null?p.east:'')+'" placeholder="Восток" style="width:96px">'
+        +'<input class="pwest" value="'+(p.west!=null?p.west:'')+'" placeholder="Запад" style="width:96px">'
+        +'<button class="mini del pdel">×</button></div>'; }).join('');
+    el('polys').innerHTML=rows||'<div class="sub">полигонов нет</div>';
+    el('addPoly').onclick=function(){ readSettings(); readPolygons(); var id=newPolyId(); (polygons=polygons||{})[id]={label:'Новый полигон',image:'',north:0,south:0,east:0,west:0}; renderPolygons(); if(cfg) renderSettings(); };
+    el('polys').querySelectorAll('.pdel').forEach(function(b){ b.onclick=function(){ readSettings(); readPolygons(); delete polygons[b.parentNode.getAttribute('data-poly')]; renderPolygons(); if(cfg) renderSettings(); }; });
+  }
+  function readPolygons(){ var ps={};
+    if(el('polys')) el('polys').querySelectorAll('.polyrow').forEach(function(r){ var id=r.getAttribute('data-poly');
+      ps[id]={ label:r.querySelector('.pl').value.trim(), image:r.querySelector('.pimg').value.trim(),
+        north:num(r.querySelector('.pnorth').value), south:num(r.querySelector('.psouth').value),
+        east:num(r.querySelector('.peast').value), west:num(r.querySelector('.pwest').value) }; });
+    polygons=ps;
   }
 
   function revealStr(o){ var r=o.reveal||'always', L=window.LABELS.reveal;
@@ -196,6 +229,13 @@
   function sideOpts(sel){ var ks=Object.keys(cfg.sides).concat(['shared']); return ks.map(function(s){ var lbl=(cfg.sides[s]&&cfg.sides[s].label)||(s==='shared'?'общая':s); return '<option value="'+s+'"'+(s===sel?' selected':'')+'>'+lbl+'</option>'; }).join(''); }
   function opt(list,sel,map){ return list.map(function(s){ return '<option value="'+s+'"'+(s===sel?' selected':'')+'>'+((map&&map[s])||s)+'</option>'; }).join(''); }
   function coordOpts(sel){ var cs=cfg.coords||{}; return '<option value="">— нет —</option>'+Object.keys(cs).map(function(id){ var c=cs[id]||{}; return '<option value="'+id+'"'+(id===sel?' selected':'')+'>'+(c.label||id)+' ('+c.lat+', '+c.lng+')</option>'; }).join(''); }
+  // выпадающий список существующих точек (для leadsTo/reveals — id по смыслу, руками не набирать)
+  function pointOpts(sel){ var opts='<option value="">— нет —</option>', found=false;
+    (cfg.objectives||[]).forEach(function(o){ if(!o.id) return; if(o.id===sel) found=true;
+      var kindL=(window.LABELS.kinds[o.kind]||o.kind||'');
+      opts+='<option value="'+o.id+'"'+(o.id===sel?' selected':'')+'>'+o.id+' · '+kindL+(o.label?' · '+o.label:'')+'</option>'; });
+    if(sel && !found) opts+='<option value="'+sel+'" selected>'+sel+' (нет в списке)</option>';   // не терять уже заданное значение
+    return opts; }
   function coordCell(o){ var c=(o.coord&&cfg.coords)?cfg.coords[o.coord]:null;
     if(c) return (c.label||o.coord)+' <span style="color:var(--ink-dim)">'+(+c.lat).toFixed(5)+', '+(+c.lng).toFixed(5)+'</span>';
     return o.at?o.at[0].toFixed(5)+', '+o.at[1].toFixed(5):'—'; }
@@ -211,9 +251,9 @@
     case 'fragment':  return fld(L.fragment,'<input id="f_frag" value="'+(o.fragment||'')+'">');
     case 'decoy':     return fld(L.decoy,'<select id="f_decoy"><option value="">нет</option><option value="1" '+(o.decoy?'selected':'')+'>да</option></select>');
     case 'code':      return fld(L.code,'<input id="f_code" value="'+((o.code||[]).join(','))+'">');
-    case 'reveals':   return fld(L.reveals,'<input id="f_reveals" value="'+(o.reveals||'')+'">');
+    case 'reveals':   return fld(L.reveals,'<select id="f_reveals">'+pointOpts(o.reveals)+'</select>');
     case 'onSuccess': return fld(L.onSuccess,'<input id="f_sf" value="'+((o.onSuccess&&o.onSuccess.flag)||'')+'">');
-    case 'leadsTo':   return fld(L.leadsTo,'<input id="f_leadsTo" value="'+(o.leadsTo||'')+'">');
+    case 'leadsTo':   return fld(L.leadsTo,'<select id="f_leadsTo">'+pointOpts(o.leadsTo)+'</select>');
     default: return '';
   } }
 
@@ -272,6 +312,7 @@
   }
 
   function val(id){ var e=el(id); return e?e.value.trim():''; }
+  function num(v){ var n=parseFloat(v); return isNaN(n)?0:n; }   // пустое/нечисловое → 0 (Firebase .set бросает на NaN)
   function saveForm(){
     var o=currentForm();
     var rv=val('f_rv'), rvf=val('f_rvflag');
@@ -291,8 +332,8 @@
   el('backBtn').onclick=showList;
   el('seed').onclick=function(){ if(confirm('Сбросить конфиг до пустого шаблона (новый прогон)?')){ cfg=defCfg(); renderAll(); } };
   el('save').onclick=function(){
-    readSettings(); readCoords();
-    State.saveConfig(cfg).then(function(){ msg('сохранено ✓'); }, function(e){ alert('Ошибка: '+e.message); });
+    readSettings(); readCoords(); readPolygons();
+    Promise.all([ State.saveConfig(cfg), State.savePolygons(polygons) ]).then(function(){ msg('сохранено ✓'); }, function(e){ alert('Ошибка: '+e.message); });
   };
 })();
 </script>

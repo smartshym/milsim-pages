@@ -56,5 +56,14 @@ window.SCHEMA = {
     mechanics: { captureSec: 900, posIntervalSec: 60, staleSec: 300, showEnemyCaptures: true, gameZone: 25, showZones: false },
     coords: {},
     objectives: []
+  },
+
+  // Справочник полигонов (квадрат карты: подложка + границы). ГЛОБАЛЬНЫЙ узел БД /polygons —
+  // ЖИВЁТ ВНЕ game/<run>/, поэтому сброс/вайп прогона его не трогает, и он общий для всех прогонов.
+  // Это дефолт-сид: используется, когда /polygons в БД пуст. Выбор полигона в админке → подставляет в geo.
+  POLYGONS: {
+    boloto: { label: 'Болото', image: 'Boloto_v1.05.jpg',
+              north: 43.81687355441687, south: 43.78795236649337,
+              east: 77.07101927537143, west: 77.04279873867411 }
   }
 };
